@@ -107,6 +107,30 @@ function drawPoop(g, S, accent) {
   g.fill();
 }
 
+/* Caras especiales del dado de Ira: imágenes máscara (blanco=transparente)
+ * precargadas al arrancar; se tiñen del color de silueta en faceTexture. */
+const FACE_IMGS = { skull: null, poop: null };
+for (const name of Object.keys(FACE_IMGS)) {
+  const img = new Image();
+  img.onload = () => { FACE_IMGS[name] = img; };
+  img.src = `faces/${name}.png`;
+}
+const DARK_SILHOUETTE = '#3d2708';
+
+/* dibuja una máscara tintada: recorta la silueta y rellena con color.
+ * Se compone en un canvas aparte porque 'source-in' sobre el canvas de la cara
+ * borraría el cuerpo del dado ya pintado. */
+function drawMaskTinted(g, img, S, colorHex, margin = .09) {
+  const off = document.createElement('canvas');
+  off.width = off.height = S;
+  const og = off.getContext('2d');
+  og.drawImage(img, S * margin, S * margin, S * (1 - 2 * margin), S * (1 - 2 * margin));
+  og.globalCompositeOperation = 'source-in';
+  og.fillStyle = colorHex;
+  og.fillRect(0, 0, S, S);
+  g.drawImage(off, 0, 0);
+}
+
 /* Calavera estilizada para el 6 del dado de Ira: silueta oscura (contrasta con
  * cualquier acento) con cuencas/nariz/dientes del tono medio del propio dado. */
 function drawSkull(g, S, accent) {
@@ -174,9 +198,11 @@ function faceTexture(value, wrath, accent = ACCENTS.gold) {
   // pips — en el dado de Ira: 6 = calavera, 1 = caca, resto = pips normales
   const pip = PIP_LAYOUT[value];
   if (wrath && value === 6) {
-    drawSkull(g, S, accent);
+    if (FACE_IMGS.skull) drawMaskTinted(g, FACE_IMGS.skull, S, DARK_SILHOUETTE);
+    else drawSkull(g, S, accent);
   } else if (wrath && value === 1) {
-    drawPoop(g, S, accent);
+    if (FACE_IMGS.poop) drawMaskTinted(g, FACE_IMGS.poop, S, DARK_SILHOUETTE);
+    else drawPoop(g, S, accent);
   } else {
   g.fillStyle = wrath ? '#3d2708' : '#33291a';
   for (const [x, y] of pip) {
@@ -205,8 +231,8 @@ function makeMaterials(wrath, accent, cache) {
   const pre = wrath ? 'w' : 'n';
   return order.map(name => new THREE.MeshStandardMaterial({
     map: cache[pre + name] || (cache[pre + name] = faceTexture(FACE_VALUES[name], wrath, accent)),
-    roughness: wrath ? .35 : .5,
-    metalness: wrath ? .45 : .05,
+    roughness: wrath ? .5 : .5,
+    metalness: wrath ? .08 : .05,
     emissive: new THREE.Color(wrath ? accent.emissive : 0x000000),
     emissiveIntensity: wrath ? .28 : 0,
     transparent: true,
@@ -653,7 +679,7 @@ export class DiceScene {
       }
     }
 
-    // respiración del dado de Ira
+    // respiración del dado de Ira + pulso del halo de fuego (pifia/gloria)
     const t = performance.now() / 1000;
     for (const d of this.dice) {
       if (d.wrath && !d.flash) {
@@ -661,7 +687,6 @@ export class DiceScene {
           m.emissiveIntensity = .22 + Math.sin(t * 4) * .1;
         });
       }
-      // pulso del halo de fuego (pifia/gloria)
       if (d.glowSprite) {
         d.glowSprite.material.opacity = .5 + Math.sin(t * 6) * .22;
         const s = 2.9 * d.size * (1 + Math.sin(t * 6) * .07);

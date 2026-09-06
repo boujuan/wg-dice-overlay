@@ -7,6 +7,32 @@ export class Sound {
     this.master = null;
     this.volume = .8;
     this.lastClack = 0;
+    this.buffers = {};   // sfx mp3 decodificados (pedo, for the emperor)
+    this._loadSfx();
+  }
+
+  /* precarga de los mp3 empaquetados en overlay/sfx/ */
+  async _loadSfx() {
+    for (const name of ['fart', 'emperor']) {
+      try {
+        const res = await fetch(`sfx/${name}.mp3`);
+        if (!res.ok) continue;
+        const arr = await res.arrayBuffer();
+        const ctx = this._ensure();
+        this.buffers[name] = await ctx.decodeAudioData(arr);
+      } catch { /* sin archivo: fallback procedural */ }
+    }
+  }
+
+  _playBuffer(name) {
+    const buf = this.buffers[name];
+    if (!buf) return false;
+    const ctx = this._ensure();
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.master);
+    src.start();
+    return true;
   }
 
   _ensure() {
@@ -135,8 +161,9 @@ export class Sound {
     o.start(t); o.stop(t + .45);
   }
 
-  /* whoosh de fuego + golpe grave — Pifia */
+  /* whoosh de fuego + golpe grave — Pifia (con pedo sonoro si está cargado) */
   pifia() {
+    if (this._playBuffer('fart')) return;
     const ctx = this._ensure();
     const t = ctx.currentTime;
     const src = ctx.createBufferSource();
@@ -165,8 +192,9 @@ export class Sound {
     o.start(t + .05); o.stop(t + .85);
   }
 
-  /* shimmer dorado — Glory */
+  /* «For the Emperor» — Glory (con fallback shimmer dorado) */
   glory() {
+    if (this._playBuffer('emperor')) return;
     const ctx = this._ensure();
     const t = ctx.currentTime;
     [659.25, 830.6, 987.77, 1318.5].forEach((f, i) => {
