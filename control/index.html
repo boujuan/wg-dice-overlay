@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Tiradas W&G 3D — Control</title>
+<link rel="stylesheet" href="control.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">🎲</span>
+      <div>
+        <h1>Tiradas <span>W&amp;G</span> 3D</h1>
+        <div class="subtitle">Overlay para la pantalla de jugadores · Wrath &amp; Glory</div>
+      </div>
+    </div>
+    <div class="status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Overlay: comprobando…</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ panel izquierdo: lanzador ============ -->
+    <section class="launcher">
+      <div class="tabs">
+        <button class="tab active" data-mode="test">Test</button>
+        <button class="tab" data-mode="damage">Daño / ED</button>
+        <button class="tab" data-mode="free">Libre</button>
+      </div>
+
+      <!-- modo TEST -->
+      <div class="panel" id="panel-test">
+        <div class="controls-row">
+          <div class="stepper">
+            <label>Dados</label>
+            <div class="stepper-box">
+              <button data-step="-1" data-target="pool">−</button>
+              <input id="pool" type="number" min="1" max="20" value="5">
+              <button data-step="1" data-target="pool">+</button>
+            </div>
+          </div>
+          <div class="stepper">
+            <label>DN</label>
+            <div class="stepper-box">
+              <button data-step="-1" data-target="dn">−</button>
+              <input id="dn" type="number" min="1" max="10" value="2">
+              <button data-step="1" data-target="dn">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="hintline">El último dado es el de <b>Ira</b> (dorado) · 4-5 = icono · 6 = 2 iconos</div>
+      </div>
+
+      <!-- modo DAÑO -->
+      <div class="panel hidden" id="panel-damage">
+        <div class="controls-row">
+          <div class="stepper">
+            <label>Base</label>
+            <div class="stepper-box">
+              <button data-step="-1" data-target="base">−</button>
+              <input id="base" type="number" min="0" max="99" value="7">
+              <button data-step="1" data-target="base">+</button>
+            </div>
+          </div>
+          <div class="stepper">
+            <label>Dados ED</label>
+            <div class="stepper-box">
+              <button data-step="-1" data-target="ed">−</button>
+              <input id="ed" type="number" min="1" max="20" value="2">
+              <button data-step="1" data-target="ed">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="hintline">Ej. lasgun: base 7 · ED 2 (Rapid Fire a corta) · cada 4-5 = +1 · 6 = +2</div>
+      </div>
+
+      <!-- modo LIBRE -->
+      <div class="panel hidden" id="panel-free">
+        <div class="controls-row">
+          <div class="stepper">
+            <label>Dados</label>
+            <div class="stepper-box">
+              <button data-step="-1" data-target="pool2">−</button>
+              <input id="pool2" type="number" min="1" max="20" value="2">
+              <button data-step="1" data-target="pool2">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="hintline">Tirada suelta: dados + suma total</div>
+      </div>
+
+      <button id="btn-roll" class="roll">🎲 LANZAR</button>
+      <div class="repeat-row">
+        <button id="btn-repeat" class="ghost">↺ Repetir última (R)</button>
+        <button id="btn-clear" class="ghost">✕ Limpiar overlay (Esc)</button>
+      </div>
+
+      <div class="section-title">Presets <span class="mini">— clic lanza · ✕ elimina · «+» guarda los valores actuales</span></div>
+      <div id="presets" class="presets"></div>
+      <div class="preset-save">
+        <input id="preset-name" type="text" placeholder="Nombre (p. ej. Ztrambotico Smite 7)">
+        <button id="btn-preset-save" class="ghost">+ Guardar preset</button>
+      </div>
+    </section>
+
+    <!-- ============ panel derecho: historial + ajustes ============ -->
+    <section class="side">
+      <div class="section-title">Historial</div>
+      <ul id="history"></ul>
+
+      <div class="section-title">Pantallas</div>
+      <div class="displays">
+        <select id="display-select"></select>
+        <div class="displays-row">
+          <button id="btn-preview" class="ghost">👁 Probar en esta pantalla</button>
+          <button id="btn-toggle" class="ghost">Ocultar overlay</button>
+        </div>
+        <label class="checkrow">
+          <input type="checkbox" id="chk-windowed">
+          <span>Modo ventana <em>(si la transparencia no funciona en tu equipo)</em></span>
+        </label>
+      </div>
+
+      <div class="section-title">Sonido</div>
+      <div class="volume">
+        <input id="volume" type="range" min="0" max="100" value="80">
+        <span id="volume-num">80%</span>
+      </div>
+
+      <div class="section-title">Duración del veredicto</div>
+      <div class="volume">
+        <input id="banner-secs" type="range" min="3" max="20" value="7">
+        <span id="banner-num">7s</span>
+      </div>
+
+      <div class="shortcuts">
+        <b>Atajos:</b> Espacio lanzar · R repetir · 1-9 dados rápidos · Esc limpiar
+      </div>
+    </section>
+  </main>
+
+  <script src="control.js"></script>
+</body>
+</html>

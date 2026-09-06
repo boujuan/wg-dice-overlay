@@ -1,0 +1,166 @@
+:root {
+  --ochre: #d9a441;
+  --gold: #ffd24a;
+  --ink: #161310;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;          /* click-through total junto a setIgnoreMouseEvents */
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+/* modo ventana (fallback cuando la transparencia no está disponible) */
+body.windowed {
+  background: radial-gradient(ellipse at 50% 30%, #2b2317 0%, #12100d 80%);
+}
+body.windowed::after {
+  content: "MODO VENTANA — previsualización de lo que ven los jugadores";
+  position: fixed; bottom: 10px; right: 16px; z-index: 4;
+  color: rgba(233, 217, 166, .4);
+  font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase;
+}
+
+canvas { position: fixed; inset: 0; }
+#three { z-index: 1; }
+#fx { z-index: 2; pointer-events: none; }
+
+/* ---------- capas de efecto ---------- */
+
+#vignette {
+  position: fixed; inset: 0; z-index: 3; opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(190, 30, 5, .55) 100%);
+  transition: opacity .25s;
+}
+#vignette.on { opacity: 1; animation: vig 1.2s ease-in-out; }
+
+@keyframes vig {
+  0%, 100% { opacity: 0; }
+  25% { opacity: 1; }
+  70% { opacity: .55; }
+}
+
+#flash {
+  position: fixed; inset: 0; z-index: 3; opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(255, 220, 120, .4) 0%, transparent 70%);
+}
+#flash.on { animation: flash .9s ease-out; }
+
+@keyframes flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- etiqueta de tirada (nombre del preset) ---------- */
+
+#rolllabel {
+  position: fixed; top: 4.5vh; left: 50%; transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(22, 19, 16, .88);
+  color: #cbb877;
+  border: 1px solid rgba(217, 164, 65, .5);
+  padding: 6px 22px;
+  font-size: clamp(13px, 1.6vh, 18px);
+  letter-spacing: .18em; text-transform: uppercase;
+}
+
+/* ---------- contador de iconos ---------- */
+
+#tally {
+  position: fixed; top: 12vh; left: 50%; transform: translateX(-50%);
+  z-index: 5; text-align: center;
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(255, 190, 60, .8), 0 2px 6px rgba(0,0,0,.9);
+}
+#tally .num {
+  display: block;
+  font-size: clamp(46px, 9vh, 96px);
+  font-weight: 800; line-height: 1;
+}
+#tally .cap {
+  font-size: clamp(12px, 1.7vh, 18px);
+  letter-spacing: .5em; text-transform: uppercase; opacity: .85;
+}
+
+/* ---------- banner de veredicto ---------- */
+
+#banner {
+  position: fixed; bottom: 9vh; left: 50%;
+  transform: translateX(-50%) translateY(30px);
+  z-index: 5;
+  min-width: 34vw; max-width: 80vw;
+  background: linear-gradient(180deg, rgba(24, 20, 15, .96), rgba(16, 13, 10, .96));
+  border: 2px solid var(--ochre);
+  border-radius: 6px;
+  padding: 2.2vh 3.4vw;
+  text-align: center;
+  opacity: 0;
+  transition: opacity .3s, transform .3s;
+  box-shadow: 0 10px 60px rgba(0, 0, 0, .55);
+}
+#banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#banner .title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 5.6vh, 54px);
+  font-weight: 700; letter-spacing: .06em; line-height: 1.1;
+  color: #e9d9a6;
+}
+#banner .detail {
+  margin-top: .8vh;
+  font-size: clamp(14px, 2.2vh, 22px);
+  letter-spacing: .12em; text-transform: uppercase;
+  color: #b9a86f;
+}
+
+/* variantes de veredicto */
+
+#banner.success { border-color: #8fae5a; }
+#banner.success .title { color: #c6dd96; text-shadow: 0 0 22px rgba(150, 200, 80, .5); }
+
+#banner.damage { border-color: #d97b41; }
+#banner.damage .title { color: #ffb87e; text-shadow: 0 0 22px rgba(255, 130, 50, .5); }
+
+#banner.free { border-color: var(--ochre); }
+
+#banner.fail {
+  border-color: #a04832;
+  animation: shake .5s;
+}
+#banner.fail .title { color: #e0907a; }
+
+#banner.complication {
+  border-color: #ff5522;
+  background: linear-gradient(180deg, rgba(60, 12, 4, .96), rgba(30, 6, 2, .96));
+  animation: shake .5s;
+}
+#banner.complication .title {
+  color: #ff8858;
+  text-shadow: 0 0 26px rgba(255, 70, 20, .9), 0 0 60px rgba(255, 40, 0, .5);
+}
+#banner.complication .detail { color: #e8a888; }
+
+#banner.glory {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, rgba(66, 48, 8, .96), rgba(34, 24, 4, .96));
+}
+#banner.glory .title {
+  color: var(--gold);
+  text-shadow: 0 0 26px rgba(255, 210, 74, .95), 0 0 70px rgba(255, 190, 40, .55);
+}
+#banner.glory .detail { color: #e8cf8a; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  20% { transform: translateX(calc(-50% - 9px)) translateY(2px); }
+  40% { transform: translateX(calc(-50% + 8px)) translateY(-2px); }
+  60% { transform: translateX(calc(-50% - 5px)); }
+  80% { transform: translateX(calc(-50% + 4px)); }
+}
+
+.hidden { display: none; }

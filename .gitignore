@@ -1,0 +1,12 @@
+# Dependencias
+node_modules/
+
+# Salida de empaquetado
+dist/
+
+# Librerías vendorizadas (las copia `npm install` → scripts/vendor.mjs)
+overlay/vendor/
+
+# Config local del desarrollador
+*.log
+.DS_Store

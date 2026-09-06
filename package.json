@@ -1,0 +1,64 @@
+{
+  "name": "wg-dice-overlay",
+  "version": "1.0.0",
+  "description": "Tiradas W&G 3D — overlay transparente de dados 3D con física para Wrath & Glory, pensado para flotar sobre Arkenforge en la pantalla de los jugadores.",
+  "main": "main.js",
+  "author": "boujuan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boujuan/wg-dice-overlay.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node scripts/vendor.mjs",
+    "dist": "electron-builder --win portable --linux AppImage",
+    "dist:win": "electron-builder --win portable",
+    "dist:linux": "electron-builder --linux AppImage"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "electron": "^39.2.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.boujuan.wgdiceoverlay",
+    "productName": "WG Dice Overlay",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "control/**",
+      "overlay/**",
+      "vendor/**",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Game"
+    },
+    "portable": {
+      "artifactName": "WG-Dice-Overlay-${version}-portable.exe"
+    },
+    "appImage": {
+      "artifactName": "WG-Dice-Overlay-${version}-x86_64.AppImage"
+    }
+  }
+}

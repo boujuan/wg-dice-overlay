@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Overlay de Tiradas W&G</title>
+<link rel="stylesheet" href="overlay.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+</head>
+<body>
+  <canvas id="three"></canvas>
+  <canvas id="fx"></canvas>
+
+  <div id="vignette"></div>
+  <div id="flash"></div>
+
+  <div id="rolllabel" class="hidden"></div>
+
+  <div id="tally" class="hidden">
+    <span class="num">0</span>
+    <span class="cap">ICONOS</span>
+  </div>
+
+  <div id="banner" class="hidden">
+    <div class="title">—</div>
+    <div class="detail">—</div>
+  </div>
+
+  <script type="module" src="overlay.js"></script>
+</body>
+</html>
