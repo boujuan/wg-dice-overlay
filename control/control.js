@@ -210,6 +210,14 @@ chkWindowed.addEventListener('change', async () => {
   await window.wgControl.recreateOverlay();
 });
 
+const gpuSelect = $('#gpu-mode');
+gpuSelect.value = cfg.gpuMode || 'auto';
+gpuSelect.addEventListener('change', async () => {
+  await window.wgControl.setConfig({ gpuMode: gpuSelect.value });
+  // la escalera de gráficos requiere reiniciar la app entera
+  await window.wgControl.relaunchForGpu();
+});
+
 $('#btn-toggle').addEventListener('click', async () => {
   const visible = await window.wgControl.toggleOverlay();
   $('#btn-toggle').textContent = visible ? 'Ocultar overlay' : 'Mostrar overlay';

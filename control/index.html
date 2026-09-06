@@ -120,6 +120,15 @@
           <input type="checkbox" id="chk-windowed">
           <span>Modo ventana <em>(si la transparencia no funciona en tu equipo)</em></span>
         </label>
+        <div class="checkrow">
+          <span>Gráficos</span>
+          <select id="gpu-mode">
+            <option value="auto">Automático</option>
+            <option value="vulkan">ANGLE Vulkan</option>
+            <option value="software">Software (sin GPU)</option>
+          </select>
+          <em id="gpu-note" style="font-size:11px;color:var(--dim)"></em>
+        </div>
       </div>
 
       <div class="section-title">Sonido</div>

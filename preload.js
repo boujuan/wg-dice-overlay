@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('wgControl', {
   recreateOverlay: () => ipcRenderer.invoke('overlay:recreate'),
   toggleOverlay: (visible) => ipcRenderer.invoke('overlay:toggle', visible),
   previewOverlay: () => ipcRenderer.invoke('overlay:preview'),
+  relaunchForGpu: () => ipcRenderer.invoke('app:relaunch-gpu'),
   requestStatus: () => ipcRenderer.invoke('overlay:status:request'),
   roll: (payload) => ipcRenderer.invoke('roll:request', payload),
   clearOverlay: () => ipcRenderer.invoke('overlay:clear'),

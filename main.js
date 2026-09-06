@@ -43,7 +43,8 @@ function main() {
   const defaults = {
     overlayDisplayId: null,   // null = pantalla principal
     windowedOverlay: false,   // overlay como ventana normal (si la transparencia falla)
-    disableGpu: false,        // fallback si el proceso GPU de la máquina crashea
+    gpuMode: 'auto',          // auto | no-gpu-sandbox | software  (escalera de fallback)
+    disableGpu: false,        // flag antiguo (v1.0.1) — migrado a gpuMode
     volume: 0.8,
     bannerSeconds: 7,
     presets: [
@@ -55,28 +56,40 @@ function main() {
     lastRoll: null
   };
   let cfg = loadConfig();
+  // migración de valores de la v1.0.1: disableGpu → software; no-gpu-sandbox → auto
+  if (cfg.disableGpu && (!cfg.gpuMode || cfg.gpuMode === 'auto')) cfg.gpuMode = 'software';
+  if (cfg.gpuMode === 'no-gpu-sandbox') cfg.gpuMode = 'auto';
 
-  // si ya sabemos que la GPU de esta máquina crashea, render por software
-  if (cfg.disableGpu) {
+  /* Escalera de gráficos:
+   * auto     → backend ANGLE por defecto (en Mesa reciente, EGL_CreateWindowSurface
+   *            puede segfaultar — bug de Mesa/ANGLE con AMD/otras GPU)
+   * vulkan   → ANGLE sobre Vulkan (RADV) — esquiva el ANGLE-on-GL de Mesa
+   * software → sin GPU (último recurso; en X11+XWayland puede no pintar) */
+  if (cfg.gpuMode === 'software') {
     app.disableHardwareAcceleration();
-    console.log('[W&G] GPU desactivada por configuración (fallback estable)');
+    console.log('[W&G] Gráficos: software (sin GPU) por configuración');
+  } else if (cfg.gpuMode === 'vulkan') {
+    app.commandLine.appendSwitch('use-angle', 'vulkan');
+    console.log('[W&G] Gráficos: ANGLE Vulkan por configuración');
   }
 
-  // si el proceso GPU muere (segfault típico de AppImage + ciertos drivers),
-  // lo recordamos y relanzamos con aceleración desactivada — una sola vez
+  // si el proceso GPU muere (segfault en Mesa/ANGLE EGL_CreateWindowSurface),
+  // sube un peldaño en la escalera y relanza — hasta agotarla
   app.on('child-process-gone', (_e, details) => {
     const type = String(details.type || '').toUpperCase();
-    if (type.includes('GPU') && !cfg.disableGpu) {
-      console.log('[W&G] Proceso GPU crasheó — relanzando sin aceleración hardware');
-      cfg.disableGpu = true;
+    if (!type.includes('GPU')) return;
+    if (cfg.gpuMode === 'auto') {
+      console.log('[W&G] GPU crasheó (¿Mesa/ANGLE?) — reintentando con ANGLE Vulkan');
+      cfg.gpuMode = 'vulkan';
       saveConfig();
-      // En AppImage, process.execPath apunta dentro del montaje squashfs que se
-      // desmonta al salir: hay que relanzar vía la ruta del propio .AppImage.
-      const relaunchOpts = process.env.APPIMAGE
-        ? { args: [process.env.APPIMAGE, ...process.argv.slice(1)] }
-        : {};
-      app.relaunch(relaunchOpts);
-      app.exit(0);
+      relaunchApp();
+    } else if (cfg.gpuMode === 'vulkan') {
+      console.log('[W&G] Vulkan también crasheó — último recurso: software');
+      cfg.gpuMode = 'software';
+      saveConfig();
+      relaunchApp();
+    } else {
+      console.log('[W&G] GPU crasheó incluso en modo software; sin más pasos');
     }
   });
 
@@ -89,6 +102,16 @@ function main() {
   }
   function saveConfig() {
     try { fs.writeFileSync(cfgPath(), JSON.stringify(cfg, null, 2)); } catch {}
+  }
+
+  function relaunchApp() {
+    // En AppImage, process.execPath apunta dentro del montaje squashfs que se
+    // desmonta al salir: hay que relanzar vía la ruta del propio .AppImage.
+    const relaunchOpts = process.env.APPIMAGE
+      ? { args: [process.env.APPIMAGE, ...process.argv.slice(1)] }
+      : {};
+    app.relaunch(relaunchOpts);
+    app.exit(0);
   }
 
   /* ---------------- ventanas ---------------- */
@@ -206,6 +229,12 @@ function main() {
   });
 
   ipcMain.handle('overlay:recreate', () => { recreateOverlay(); return true; });
+
+  ipcMain.handle('app:relaunch-gpu', () => {
+    saveConfig();
+    relaunchApp();
+    return true;
+  });
 
   ipcMain.handle('overlay:toggle', (_e, visible) => {
     overlayVisible = visible ?? !overlayVisible;

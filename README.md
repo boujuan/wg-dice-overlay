@@ -88,7 +88,9 @@ Tres vías, por orden de recomendación:
 | Problema | Solución |
 |---|---|
 | El overlay no se ve sobre Arkenforge | Arkenforge en fullscreen exclusivo dibuja por encima: cámbialo a borderless/ventana |
-| En Linux el overlay sale negro y bloquea | Ya resuelto: la app fuerza X11/XWayland en Linux (donde transparencia y click-through funcionan). Si tu sesión no tiene XWayland (rarísimo), usa **Modo ventana** o arranca con `--ozone-platform=wayland` bajo tu cuenta y riesgo |
+| En Linux el proceso GPU crashea (segfault en `libGLESv2 / EGL_CreateWindowSurface`) | Bug de **Mesa/ANGLE** con ciertos drivers (AMD incluido). La app lo detecta y **relanza sola con ANGLE Vulkan** (verificado con Radeon RDNA3); si Vulkan también falla, pasa a software. Puedes forzar el modo en *Pantallas → Gráficos* |
+| En Linux el overlay sale negro y bloquea | Ya resuelto: la app fuerza X11/XWayland en Linux. Si tu sesión no tiene XWayland (rarísimo), usa **Modo ventana** |
+| El modo *Software* no pinta nada (XWayland) | Limitación conocida de Electron+X11 por software; usa *ANGLE Vulkan* o reinicia la sesión |
 | No se oye nada | Sube el volumen en el panel; el audio se genera al vuelo (sin archivos) |
 | SmartScreen/antivirus avisa del .exe | Firmado no está; "ejecutar igualmente" o añade excepción |
 | Los dados salen del borde | No pueden: hay paredes invisibles ajustadas a la pantalla |
