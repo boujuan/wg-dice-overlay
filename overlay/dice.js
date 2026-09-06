@@ -71,6 +71,80 @@ const PIP_LAYOUT = {
   6: [[.3, .24], [.7, .24], [.3, .5], [.7, .5], [.3, .76], [.7, .76]]
 };
 
+/* Caca estilizada para el 1 del dado de Ira (¡PIFIA!): silueta marrón oscuro
+ * con remolino, legible sobre cualquier acento. */
+function drawPoop(g, S, accent) {
+  const dark = '#4a2c10';
+  const light = accent.body[1];
+  g.fillStyle = dark;
+  // montículo: tres lóbulos apilados de mayor a menor
+  g.beginPath();
+  g.ellipse(S * .5, S * .68, S * .21, S * .085, 0, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(S * .5, S * .565, S * .155, S * .08, 0, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(S * .5, S * .46, S * .105, S * .07, 0, 0, Math.PI * 2);
+  g.fill();
+  // punta rizada
+  g.beginPath();
+  g.ellipse(S * .5, S * .375, S * .062, S * .045, -.35, 0, Math.PI * 2);
+  g.fill();
+  // remolino con el tono del cuerpo del dado
+  g.strokeStyle = light;
+  g.lineWidth = S * .012;
+  g.beginPath();
+  g.moveTo(S * .36, S * .60);
+  g.quadraticCurveTo(S * .5, S * .545, S * .635, S * .605);
+  g.moveTo(S * .41, S * .50);
+  g.quadraticCurveTo(S * .5, S * .455, S * .585, S * .505);
+  g.stroke();
+  // brillo, mismo estilo que los pips
+  g.fillStyle = 'rgba(255,230,160,.3)';
+  g.beginPath();
+  g.arc(S * .435, S * .415, S * .026, 0, Math.PI * 2);
+  g.fill();
+}
+
+/* Calavera estilizada para el 6 del dado de Ira: silueta oscura (contrasta con
+ * cualquier acento) con cuencas/nariz/dientes del tono medio del propio dado. */
+function drawSkull(g, S, accent) {
+  const dark = '#3d2708';
+  const light = accent.body[1];
+  // cráneo + mandíbula
+  g.fillStyle = dark;
+  g.beginPath();
+  g.ellipse(S * .5, S * .40, S * .185, S * .168, 0, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.roundRect(S * .395, S * .515, S * .21, S * .135, S * .035);
+  g.fill();
+  // cuencas, nariz y dientes en el tono del cuerpo
+  g.fillStyle = light;
+  for (const ex of [S * .428, S * .572]) {
+    g.beginPath();
+    g.ellipse(ex, S * .388, S * .038, S * .046, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.beginPath();
+  g.moveTo(S * .5, S * .438);
+  g.lineTo(S * .5 + S * .026, S * .492);
+  g.lineTo(S * .5 - S * .026, S * .492);
+  g.closePath();
+  g.fill();
+  for (const tx of [S * .452, S * .5, S * .548]) {
+    g.beginPath();
+    g.roundRect(tx - S * .008, S * .545, S * .016, S * .068, S * .006);
+    g.fill();
+  }
+  // brillo, mismo estilo que los pips
+  g.fillStyle = 'rgba(255,230,160,.3)';
+  g.beginPath();
+  g.arc(S * .44, S * .30, S * .030, 0, Math.PI * 2);
+  g.fill();
+}
+
 function faceTexture(value, wrath, accent = ACCENTS.gold) {
   const S = 256;
   const c = document.createElement('canvas');
@@ -97,8 +171,13 @@ function faceTexture(value, wrath, accent = ACCENTS.gold) {
   g.lineWidth = 5;
   g.strokeRect(9, 9, S - 18, S - 18);
 
-  // pips
+  // pips — en el dado de Ira: 6 = calavera, 1 = caca, resto = pips normales
   const pip = PIP_LAYOUT[value];
+  if (wrath && value === 6) {
+    drawSkull(g, S, accent);
+  } else if (wrath && value === 1) {
+    drawPoop(g, S, accent);
+  } else {
   g.fillStyle = wrath ? '#3d2708' : '#33291a';
   for (const [x, y] of pip) {
     g.beginPath();
@@ -110,6 +189,7 @@ function faceTexture(value, wrath, accent = ACCENTS.gold) {
     g.arc(x * S - S * .018, y * S - S * .022, S * .028, 0, Math.PI * 2);
     g.fill();
     g.fillStyle = wrath ? '#3d2708' : '#33291a';
+  }
   }
 
   const tex = new THREE.CanvasTexture(c);
@@ -159,6 +239,26 @@ function roundedBoxGeometry(size, radius) {
     }
   }
   return g;
+}
+
+/* Halo aditivo (billboard) para rodear el dado con "fuego" sin lavar su textura */
+const _glowTexCache = {};
+function glowTexture() {
+  if (_glowTexCache.tex) return _glowTexCache.tex;
+  const S = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  grad.addColorStop(0, 'rgba(255,255,255,.9)');
+  grad.addColorStop(.45, 'rgba(255,255,255,.35)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, S, S);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  _glowTexCache.tex = tex;
+  return tex;
 }
 
 /* ---------- escena ---------- */
@@ -448,7 +548,7 @@ export class DiceScene {
       this.world.addBody(body);
 
       this.dice.push({
-        mesh, body, wrath, value: 0, settleFrames: 0,
+        mesh, body, wrath, value: 0, settleFrames: 0, size,
         baseEmissive: wrath ? .28 : 0,
         emissiveBase: wrath ? this.accent.emissive : 0x000000
       });
@@ -494,6 +594,7 @@ export class DiceScene {
       this.scene.remove(d.mesh);
       // geometría y texturas son compartidas (caché): solo se liberan los materiales
       d.mesh.material.forEach(m => m.dispose());
+      if (d.glowSprite) d.glowSprite.material.dispose();
     }
     this.dice = [];
     this.rollActive = false;
@@ -560,6 +661,12 @@ export class DiceScene {
           m.emissiveIntensity = .22 + Math.sin(t * 4) * .1;
         });
       }
+      // pulso del halo de fuego (pifia/gloria)
+      if (d.glowSprite) {
+        d.glowSprite.material.opacity = .5 + Math.sin(t * 6) * .22;
+        const s = 2.9 * d.size * (1 + Math.sin(t * 6) * .07);
+        d.glowSprite.scale.set(s, s, 1);
+      }
     }
 
     // fundido de salida
@@ -571,6 +678,7 @@ export class DiceScene {
       }
       this.shadowGround.material.opacity = .3 * (1 - k);
       if (k >= 1) { this.clearDice(); this.shadowGround.material.opacity = .3; }
+      else for (const d of this.dice) if (d.glowSprite) d.glowSprite.material.opacity *= (1 - k);
     }
 
     // render solo dentro de la zona de caída (scissor recorta el resto)
@@ -598,11 +706,22 @@ export class DiceScene {
     }, ms);
   }
 
-  /* mantén un dado encendido fijo (pifia/glory) */
-  lockGlow(index, color, intensity = 1.8) {
+  /* halo fijo alrededor del dado (pifia/gloria): fuego perimetral que pulsa y
+   * deja la cara del dado perfectamente legible */
+  lockGlow(index, color) {
     const d = this.dice[index];
-    if (!d) return;
-    d.flash = true;
-    d.mesh.material.forEach(m => { m.emissive.set(color); m.emissiveIntensity = intensity; });
+    if (!d || d.glow) return;
+    d.glow = color;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTexture(),
+      color, transparent: true, opacity: .7,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    const s = d.mesh.geometry.parameters.width * 2.9;
+    sprite.scale.set(s, s, 1);
+    d.mesh.add(sprite);
+    d.glowSprite = sprite;
+    // calentita sutil en el propio dado, sin lavar la textura
+    d.mesh.material.forEach(m => { m.emissive.set(color); m.emissiveIntensity = .45; });
   }
 }
