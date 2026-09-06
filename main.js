@@ -34,6 +34,8 @@ function main() {
   let controlWin = null;
   let overlayWin = null;
   let overlayVisible = true;
+  let overlayReady = false;
+  let pendingRolls = [];
   let previewTimer = null;
 
   const cfgPath = () => path.join(app.getPath('userData'), 'config.json');
@@ -68,7 +70,12 @@ function main() {
       console.log('[W&G] Proceso GPU crasheó — relanzando sin aceleración hardware');
       cfg.disableGpu = true;
       saveConfig();
-      app.relaunch();
+      // En AppImage, process.execPath apunta dentro del montaje squashfs que se
+      // desmonta al salir: hay que relanzar vía la ruta del propio .AppImage.
+      const relaunchOpts = process.env.APPIMAGE
+        ? { args: [process.env.APPIMAGE, ...process.argv.slice(1)] }
+        : {};
+      app.relaunch(relaunchOpts);
       app.exit(0);
     }
   });
@@ -156,6 +163,8 @@ function main() {
   }
 
   function destroyOverlay() {
+    overlayReady = false;
+    pendingRolls = [];
     if (overlayWin) { try { overlayWin.destroy(); } catch {} overlayWin = null; }
   }
 
@@ -226,8 +235,22 @@ function main() {
   ipcMain.handle('roll:request', (_e, payload) => {
     if (!overlayWin) createOverlay(overlayBounds());
     const rollId = Date.now() + '-' + Math.floor(Math.random() * 1e6);
-    overlayWin?.webContents.send('roll:do', { ...payload, rollId });
+    const msg = { ...payload, rollId };
+    if (overlayReady) overlayWin?.webContents.send('roll:do', msg);
+    else {
+      // el overlay aún está cargando: encolar y entregar cuando esté listo
+      pendingRolls.push(msg);
+      console.log('[W&G] overlay cargando — tirada encolada');
+    }
     return rollId;
+  });
+
+  ipcMain.handle('overlay:ready', () => {
+    overlayReady = true;
+    const q = pendingRolls;
+    pendingRolls = [];
+    for (const msg of q) overlayWin?.webContents.send('roll:do', msg);
+    return true;
   });
 
   ipcMain.handle('overlay:clear', () => {

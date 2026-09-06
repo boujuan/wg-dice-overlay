@@ -20,5 +20,6 @@ contextBridge.exposeInMainWorld('wgOverlay', {
   onRoll: (cb) => ipcRenderer.on('roll:do', (_e, p) => cb(p)),
   onClear: (cb) => ipcRenderer.on('roll:clear', () => cb()),
   resolve: (result) => ipcRenderer.invoke('roll:resolved', result),
-  getConfig: () => ipcRenderer.invoke('config:get')
+  getConfig: () => ipcRenderer.invoke('config:get'),
+  ready: () => ipcRenderer.invoke('overlay:ready')
 });

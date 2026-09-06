@@ -214,3 +214,6 @@ window.wgOverlay.onClear(() => {
   animId++;
   clearRollState();
 });
+
+// el overlay está listo para recibir tiradas (las que llegaron antes van encoladas)
+window.wgOverlay.ready();
