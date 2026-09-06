@@ -57,22 +57,31 @@ Si la transparencia no funciona en tu equipo (algunos Linux/Wayland), activa **"
 
 ## Instalación
 
-### Binarios (recomendado)
+### Windows (para el DM)
+Descarga `WG-Dice-Overlay-*-portable.exe` de [Releases](../../releases) — portable, sin instalación. Si SmartScreen avisa: *Más información → Ejecutar igualmente* (no está firmado).
 
-Descarga de [Releases](../../releases):
-- **Windows**: `WG-Dice-Overlay-*-portable.exe` — portable, sin instalación. Si Windows SmartScreen avisa: *Más información → Ejecutar igualmente* (el exe no está firmado).
-- **Linux**: `WG-Dice-Overlay-*-x86_64.AppImage` (`chmod +x` y ejecuta; necesita FUSE, `sudo pacman -S fuse2` en Arch).
+### Linux
 
-### Desde código
+Tres vías, por orden de recomendación:
 
-```bash
-git clone https://github.com/boujuan/wg-dice-overlay.git
-cd wg-dice-overlay
-npm install
-npm start
-```
+1. **Desde el repo (recomendado en tu propia máquina)** — sin AppImages de por medio:
+   ```bash
+   git clone https://github.com/boujuan/wg-dice-overlay.git
+   cd wg-dice-overlay && ./start.sh
+   ```
+   (`start.sh` instala dependencias la primera vez y arranca el modo dev.)
 
-Empaquetar: `npm run dist` (genera `.exe` portable y `.AppImage` en `dist/`).
+2. **tar.gz portable** — `WG-Dice-Overlay-*-linux-x64.tar.gz`: descomprime y ejecuta
+   `./linux-unpacked/wg-dice-overlay` (si no arranca, añade `--no-sandbox`).
+
+3. **AppImage** — funciona con doble clic, pero ojo:
+   - Con **AppImageLauncher** instalado (CachyOS y otras), lanzar por terminal puede abrir un diálogo de "¿integrar?" en vez de ejecutar; desde el gestor de archivos elige *Ejecutar*.
+   - En sesiones **Wayland**, la propia app fuerza X11/XWayland automáticamente (donde la transparencia y el click-through sí funcionan) desde v1.0.1.
+   - Si el proceso GPU de tu máquina crashea, la app se **relanza sola sin aceleración hardware** (SwiftShader tira los dados de sobra) y lo recuerda.
+
+### Empaquetar desde código
+
+`npm run dist` genera en `dist/` el `.exe` portable, el `.AppImage` y puedes comprimir `linux-unpacked/` a mano para el tar.gz.
 
 ## Solución de problemas
 

@@ -10,3 +10,4 @@ overlay/vendor/
 # Config local del desarrollador
 *.log
 .DS_Store
+*.tar.gz
