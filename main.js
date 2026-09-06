@@ -8,6 +8,21 @@ const fs = require('fs');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+/* Linux: la transparencia y el click-through del overlay solo son fiables por X11.
+ * En sesiones Wayland forzamos XWayland (presente en KDE/GNOME) salvo que el
+ * usuario pida otra plataforma explícitamente o no haya XWayland (sin DISPLAY).
+ * Sin esto, un ELECTRON_OZONE_PLATFORM_HINT=auto del sistema arranca en Wayland
+ * nativo y el overlay sale negro bloqueando todo. */
+if (process.platform === 'linux') {
+  const userForcedPlatform = process.argv.some(a => a.startsWith('--ozone-platform'));
+  if (!userForcedPlatform && process.env.DISPLAY) {
+    app.commandLine.appendSwitch('ozone-platform', 'x11');
+    console.log('[W&G] Linux: forzando Ozone X11 (XWayland) para transparencia + click-through');
+  } else if (!process.env.DISPLAY) {
+    console.log('[W&G] Linux: sin DISPLAY (¿Wayland sin XWayland?) — la transparencia puede no funcionar; usa el Modo ventana');
+  }
+}
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
