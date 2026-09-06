@@ -218,6 +218,13 @@ gpuSelect.addEventListener('change', async () => {
   await window.wgControl.relaunchForGpu();
 });
 
+const ozoneSelect = $('#ozone-select');
+ozoneSelect.value = cfg.ozonePlatform || 'x11';
+ozoneSelect.addEventListener('change', async () => {
+  await window.wgControl.setConfig({ ozonePlatform: ozoneSelect.value });
+  await window.wgControl.relaunchForGpu(); // también requiere reinicio completo
+});
+
 $('#btn-toggle').addEventListener('click', async () => {
   const visible = await window.wgControl.toggleOverlay();
   $('#btn-toggle').textContent = visible ? 'Ocultar overlay' : 'Mostrar overlay';

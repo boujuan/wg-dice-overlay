@@ -129,6 +129,14 @@
           </select>
           <em id="gpu-note" style="font-size:11px;color:var(--dim)"></em>
         </div>
+        <div class="checkrow">
+          <span>Plataforma</span>
+          <select id="ozone-select">
+            <option value="x11">X11 / XWayland (con click-through)</option>
+            <option value="wayland">Wayland nativo (sin click-through)</option>
+          </select>
+        </div>
+        <div class="hintline">Si en modo X11 las ventanas no aparecen (XWayland roto tras una actualización), pasa a <b>Wayland nativo</b> y reinicia la app.</div>
       </div>
 
       <div class="section-title">Sonido</div>

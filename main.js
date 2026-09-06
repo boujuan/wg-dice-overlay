@@ -8,21 +8,6 @@ const fs = require('fs');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
-/* Linux: la transparencia y el click-through del overlay solo son fiables por X11.
- * En sesiones Wayland forzamos XWayland (presente en KDE/GNOME) salvo que el
- * usuario pida otra plataforma explícitamente o no haya XWayland (sin DISPLAY).
- * Sin esto, un ELECTRON_OZONE_PLATFORM_HINT=auto del sistema arranca en Wayland
- * nativo y el overlay sale negro bloqueando todo. */
-if (process.platform === 'linux') {
-  const userForcedPlatform = process.argv.some(a => a.startsWith('--ozone-platform'));
-  if (!userForcedPlatform && process.env.DISPLAY) {
-    app.commandLine.appendSwitch('ozone-platform', 'x11');
-    console.log('[W&G] Linux: forzando Ozone X11 (XWayland) para transparencia + click-through');
-  } else if (!process.env.DISPLAY) {
-    console.log('[W&G] Linux: sin DISPLAY (¿Wayland sin XWayland?) — la transparencia puede no funcionar; usa el Modo ventana');
-  }
-}
-
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -43,7 +28,8 @@ function main() {
   const defaults = {
     overlayDisplayId: null,   // null = pantalla principal
     windowedOverlay: false,   // overlay como ventana normal (si la transparencia falla)
-    gpuMode: 'auto',          // auto | no-gpu-sandbox | software  (escalera de fallback)
+    ozonePlatform: 'x11',     // x11 (recomendado: click-through) | wayland (si XWayland no mapea ventanas)
+    gpuMode: 'auto',          // auto | vulkan | software  (escalera de fallback)
     disableGpu: false,        // flag antiguo (v1.0.1) — migrado a gpuMode
     volume: 0.8,
     bannerSeconds: 7,
@@ -59,6 +45,28 @@ function main() {
   // migración de valores de la v1.0.1: disableGpu → software; no-gpu-sandbox → auto
   if (cfg.disableGpu && (!cfg.gpuMode || cfg.gpuMode === 'auto')) cfg.gpuMode = 'software';
   if (cfg.gpuMode === 'no-gpu-sandbox') cfg.gpuMode = 'auto';
+
+  /* Linux: plataforma gráfica del overlay.
+   * - x11 (XWayland): soporta click-through (setIgnoreMouseEvents) — recomendado.
+   *   En algunos sistemas actualizados, XWayland deja de mapear ventanas nuevas
+   *   de Electron (todo negro/invisible): ese es el caso de 'wayland'.
+   * - wayland nativo: las ventanas siempre pintan, pero Electron no soporta
+   *   click-through en Wayland → el overlay se ajusta a una banda superior
+   *   para no bloquear el resto de la pantalla. */
+  if (process.platform === 'linux') {
+    const userForcedPlatform = process.argv.some(a => a.startsWith('--ozone-platform'));
+    if (!userForcedPlatform) {
+      if (cfg.ozonePlatform === 'wayland') {
+        app.commandLine.appendSwitch('ozone-platform', 'wayland');
+        console.log('[W&G] Linux: Ozone Wayland nativo (sin click-through; overlay en banda superior)');
+      } else if (process.env.DISPLAY) {
+        app.commandLine.appendSwitch('ozone-platform', 'x11');
+        console.log('[W&G] Linux: forzando Ozone X11 (XWayland) para transparencia + click-through');
+      } else {
+        console.log('[W&G] Linux: sin DISPLAY — la transparencia puede no funcionar; usa el Modo ventana');
+      }
+    }
+  }
 
   /* Escalera de gráficos:
    * auto     → backend ANGLE por defecto (en Mesa reciente, EGL_CreateWindowSurface
@@ -144,11 +152,23 @@ function main() {
   function createOverlay(bounds) {
     destroyOverlay();
     const windowed = windowedFlag || cfg.windowedOverlay;
+    const waylandBand = cfg.ozonePlatform === 'wayland' && !windowed;
+    // En Wayland nativo no hay click-through: el overlay se reduce a una banda
+    // superior para no bloquear el resto de la pantalla (Arkenforge sigue usable).
+    const b = waylandBand
+      ? {
+          x: bounds.x + Math.round(bounds.width * .09),
+          y: bounds.y + Math.round(bounds.height * .06),
+          width: Math.round(bounds.width * .82),
+          height: Math.round(bounds.height * .60)
+        }
+      : bounds;
     overlayWin = new BrowserWindow({
-      x: windowed ? bounds.x + 80 : bounds.x,
-      y: windowed ? bounds.y + 80 : bounds.y,
-      width: windowed ? 1100 : bounds.width,
-      height: windowed ? Math.min(700, bounds.height - 160) : bounds.height,
+      x: windowed ? b.x + 80 : b.x,
+      y: windowed ? b.y + 80 : b.y,
+      width: windowed ? 1100 : b.width,
+      height: windowed ? Math.min(700, b.height - 160) : b.height,
+      titleBarStyle: 'hidden', // sin barra de título (KDE pinta SSD en Wayland si no se fuerza)
       transparent: !windowed,
       frame: !windowed,
       resizable: windowed,
