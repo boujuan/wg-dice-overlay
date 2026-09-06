@@ -58,7 +58,9 @@ Si la transparencia no funciona en tu equipo (algunos Linux/Wayland), activa **"
 ## Instalación
 
 ### Windows (para el DM)
-Descarga `WG-Dice-Overlay-*-portable.exe` de [Releases](../../releases) — portable, sin instalación. Si SmartScreen avisa: *Más información → Ejecutar igualmente* (no está firmado).
+Descarga `WG-Dice-Overlay-Setup-*.exe` de [Releases](../../releases) — instalador de un clic (sin permisos de admin). **A partir de ahí la app se auto-actualiza**: cuando sale una versión nueva aparece un botón «🔄 Actualizar» que descarga, instala y relanza solo.
+
+Si prefieres no instalar nada, sigue habiendo `WG-Dice-Overlay-*-portable.exe` (doble clic, sin instalación; actualización manual descargando la siguiente). En ambos casos, si SmartScreen avisa: *Más información → Ejecutar igualmente* (no está firmado).
 
 ### Linux
 

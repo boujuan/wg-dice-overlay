@@ -517,6 +517,55 @@ async function applyZoom(factor) {
 $('#zoom-in').addEventListener('click', () => applyZoom((cfg.uiZoom ?? 1) + .1));
 $('#zoom-out').addEventListener('click', () => applyZoom((cfg.uiZoom ?? 1) - .1));
 
+/* ---------- actualizaciones automáticas ---------- */
+const btnUpdate = $('#btn-update');
+const updateNote = $('#update-note');
+let updateState = 'idle';   // idle | available | downloading | downloaded
+
+btnUpdate.addEventListener('click', () => {
+  if (updateState === 'available') {
+    updateState = 'downloading';
+    btnUpdate.classList.add('downloading');
+    btnUpdate.textContent = '⬇ Preparando…';
+    window.wgControl.downloadUpdate();
+  } else if (updateState === 'downloaded') {
+    window.wgControl.installUpdate();
+  }
+});
+
+$('#btn-check-update').addEventListener('click', () => {
+  updateNote.textContent = 'Comprobando…';
+  window.wgControl.checkUpdates();
+});
+
+window.wgControl.onUpdateEvent((ev) => {
+  if (ev.type === 'available') {
+    updateState = 'available';
+    btnUpdate.classList.remove('hidden', 'downloading', 'ready');
+    btnUpdate.textContent = `🔄 Actualizar${ev.version ? ' (v' + ev.version + ')' : ''}`;
+    updateNote.textContent = `Nueva versión disponible: v${ev.version || '?'}`;
+  } else if (ev.type === 'none') {
+    updateState = 'idle';
+    btnUpdate.classList.add('hidden');
+    updateNote.textContent = 'Estás al día.';
+  } else if (ev.type === 'progress') {
+    btnUpdate.textContent = `⬇ ${ev.percent}% · ${ev.mb}/${ev.total} MB`;
+    updateNote.textContent = `Descargando… ${ev.percent}%`;
+  } else if (ev.type === 'downloaded') {
+    updateState = 'downloaded';
+    btnUpdate.classList.remove('downloading');
+    btnUpdate.classList.add('ready');
+    btnUpdate.textContent = '↻ Reiniciar y actualizar';
+    updateNote.textContent = 'Descarga lista — reinicia para aplicar.';
+  } else if (ev.type === 'error') {
+    if (updateState !== 'downloading') btnUpdate.classList.add('hidden');
+    updateState = 'idle';
+    updateNote.textContent = 'No se pudo comprobar: ' + (ev.message || 'error de red');
+  } else if (ev.type === 'dev') {
+    updateNote.textContent = 'Modo desarrollo: el actualizador solo funciona instalado.';
+  }
+});
+
 /* ---------- atajos de teclado ---------- */
 
 document.addEventListener('keydown', (e) => {

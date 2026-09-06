@@ -250,3 +250,11 @@ details.settings > .displays, details.settings > .accents { padding: 12px 14px; 
   border: 1px solid var(--line); cursor: pointer;
 }
 .zoombtn:hover { background: var(--ochre); color: #16120a; }
+
+/* botón de actualización del header */
+#btn-update {
+  white-space: nowrap; font-size: 12px;
+  border-color: var(--ochre); color: var(--gold);
+}
+#btn-update.downloading { color: var(--dim); cursor: default; }
+#btn-update.ready { background: var(--ochre); color: #16120a; font-weight: 700; }

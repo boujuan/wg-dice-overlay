@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('wgControl', {
   setMiniHover: (hover) => ipcRenderer.invoke('mini:hover', hover),
   onMiniKey: (cb) => ipcRenderer.on('mini:key', (_e, k) => cb(k)),
   setZoom: (factor) => ipcRenderer.invoke('ui:zoom', factor),
+  checkUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateEvent: (cb) => ipcRenderer.on('update:event', (_e, ev) => cb(ev)),
   onMiniStatus: (cb) => ipcRenderer.on('mini:status', (_e, open) => cb(open)),
   onRollResolved: (cb) => ipcRenderer.on('roll:resolved', (_e, r) => cb(r)),
   onOverlayStatus: (cb) => ipcRenderer.on('overlay:status', (_e, s) => cb(s))

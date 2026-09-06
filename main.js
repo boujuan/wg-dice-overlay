@@ -5,6 +5,7 @@
 const { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -30,6 +31,35 @@ function main() {
   let overlayReady = false;
   let pendingRolls = [];
   let previewTimer = null;
+
+  /* ---------------- auto-actualización (electron-updater + GitHub Releases) ----------------
+   * autoDownload = false: nada se descarga sin que el DM pulse el botón.
+   * Solo activo en la app empaquetada (en dev no hay desde dónde actualizar). */
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+  const sendUpdate = (type, data = {}) => {
+    controlWin?.webContents.send('update:event', { type, ...data });
+  };
+  if (app.isPackaged) {
+    autoUpdater.on('update-available', (i) =>
+      sendUpdate('available', { version: i?.version, notes: i?.releaseNotes || null }));
+    autoUpdater.on('update-not-available', () => sendUpdate('none'));
+    autoUpdater.on('download-progress', (p) => sendUpdate('progress', {
+      percent: Math.round(p?.percent || 0),
+      mb: ((p?.transferred || 0) / 1048576).toFixed(1),
+      total: ((p?.total || 0) / 1048576).toFixed(1)
+    }));
+    autoUpdater.on('update-downloaded', (i) =>
+      sendUpdate('downloaded', { version: i?.version }));
+    autoUpdater.on('error', (e) => sendUpdate('error', { message: String(e?.message || e) }));
+  }
+  const checkUpdates = () => {
+    if (!app.isPackaged) {
+      sendUpdate('dev');
+      return;
+    }
+    autoUpdater.checkForUpdates().catch(e => sendUpdate('error', { message: String(e?.message || e) }));
+  };
 
   const cfgPath = () => path.join(app.getPath('userData'), 'config.json');
   const windowedFlag = process.argv.includes('--windowed') || process.env.WG_WINDOWED === '1';
@@ -457,6 +487,18 @@ function main() {
     return cfg.uiZoom;
   });
 
+  /* ---------------- actualizaciones ---------------- */
+  ipcMain.handle('update:check', () => { checkUpdates(); return true; });
+  ipcMain.handle('update:download', () => {
+    autoUpdater.downloadUpdate().catch(e => sendUpdate('error', { message: String(e?.message || e) }));
+    return true;
+  });
+  ipcMain.handle('update:install', () => {
+    // instala y relanza (cierra control, overlay y mini)
+    setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    return true;
+  });
+
   // enfocar el mini lanzador no funciona en Windows (foreground lock):
   // los atajos con hover se resuelven con globalShortcut (ver updateMiniKeys)
 
@@ -476,6 +518,8 @@ function main() {
     });
     createControl();
     // el overlay se crea bajo demanda (primer lanzamiento o al configurarlo)
+    // aviso de versión nueva a los 2 s de arrancar (silencioso si no la hay)
+    setTimeout(checkUpdates, 2000);
   });
 
   app.on('window-all-closed', () => {
