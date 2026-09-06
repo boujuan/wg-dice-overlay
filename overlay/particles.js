@@ -11,7 +11,16 @@ export class FX {
     this.g = canvas.getContext('2d');
     this.parts = [];
     this.running = false;
+    this.sparkPalette = GOLD;   // fuente de gloria/ascuas (teñible con el acento)
     this._loop = this._loop.bind(this);
+  }
+
+  /* paleta [hot, mid, low] en rgb para gloria/ascuas (por defecto dorada) */
+  setSparkPalette(hot, mid, low) {
+    this.sparkPalette = {
+      hot: hot || GOLD.hot, mid: mid || GOLD.mid, low: low || GOLD.low,
+      smoke: GOLD.smoke
+    };
   }
 
   resize() {
@@ -58,8 +67,9 @@ export class FX {
     }
   }
 
-  /* fuente dorada (glory) — chispas con gravedad */
+  /* fuente de gloria — chispas con gravedad, del color del acento */
   gloryFountain(x, y, big = 1) {
+    const pal = this.sparkPalette;
     const n = Math.floor(70 * big);
     for (let i = 0; i < n; i++) {
       const a = -Math.PI / 2 + (Math.random() - .5) * 1.7;
@@ -71,7 +81,7 @@ export class FX {
         vy: Math.sin(a) * sp,
         life: 0, ttl: 700 + Math.random() * 800,
         r: 1.4 + Math.random() * 2.8,
-        palette: GOLD,
+        palette: pal,
         gravity: 5.2,
         streak: Math.random() < .5
       });
@@ -86,7 +96,7 @@ export class FX {
         vy: -(Math.random() * 1.6 + .4),
         life: 0, ttl: 600 + Math.random() * 500,
         r: 8 + Math.random() * 14,
-        palette: GOLD
+        palette: pal
       });
     }
   }
@@ -101,7 +111,7 @@ export class FX {
       vy: -(.8 + Math.random() * 1.4),
       life: 0, ttl: 350 + Math.random() * 300,
       r: 2 + Math.random() * 3.5,
-      palette: GOLD
+      palette: this.sparkPalette
     });
   }
 

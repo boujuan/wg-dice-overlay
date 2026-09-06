@@ -68,6 +68,23 @@ export class Sound {
     o.stop(t + .13);
   }
 
+  /* conteo del dado de Ira — doble tono ascendente, inconfundible */
+  tickWrath() {
+    const ctx = this._ensure();
+    const t = ctx.currentTime;
+    [[740, 0, .08], [1108.7, .09, .2]].forEach(([f, dt, dur]) => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(.0001, t + dt);
+      g.gain.exponentialRampToAtTime(.26, t + dt + .015);
+      g.gain.exponentialRampToAtTime(.001, t + dt + dur);
+      o.connect(g).connect(this.master);
+      o.start(t + dt); o.stop(t + dt + dur + .05);
+    });
+  }
+
   /* sting del dado de Ira al contarlo */
   wrathSting(good) {
     const ctx = this._ensure();

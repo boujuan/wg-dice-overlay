@@ -1,6 +1,10 @@
 :root {
   --ochre: #d9a441;
   --gold: #ffd24a;
+  --accent: #ffd24a;   /* se sobreescriben por config (nombres o hex custom) */
+  --base: #e9d9a6;     /* color base: números y textos */
+  --base-soft: #d9a441;
+  --base-dim: #b9a86f;
   --ink: #161310;
 }
 
@@ -63,8 +67,8 @@ canvas { position: fixed; inset: 0; }
   position: fixed; top: 4.5vh; left: 50%; transform: translateX(-50%);
   z-index: 5;
   background: rgba(22, 19, 16, .88);
-  color: #cbb877;
-  border: 1px solid rgba(217, 164, 65, .5);
+  color: var(--base);
+  border: 1px solid var(--base-soft);
   padding: 6px 22px;
   font-size: clamp(13px, 1.6vh, 18px);
   letter-spacing: .18em; text-transform: uppercase;
@@ -75,17 +79,23 @@ canvas { position: fixed; inset: 0; }
 #tally {
   position: fixed; top: 12vh; left: 50%; transform: translateX(-50%);
   z-index: 5; text-align: center;
-  color: var(--gold);
-  text-shadow: 0 0 18px rgba(255, 190, 60, .8), 0 2px 6px rgba(0,0,0,.9);
+  color: var(--base);
 }
 #tally .num {
   display: block;
   font-size: clamp(46px, 9vh, 96px);
   font-weight: 800; line-height: 1;
+  color: var(--base);
+  /* contorno oscuro para legibilidad + halo suave del color base */
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, .95),
+    0 2px 4px rgba(0, 0, 0, .8),
+    0 0 26px color-mix(in srgb, var(--base) 38%, transparent);
 }
 #tally .cap {
   font-size: clamp(12px, 1.7vh, 18px);
   letter-spacing: .5em; text-transform: uppercase; opacity: .85;
+  color: var(--base-dim);
 }
 
 /* ---------- banner de veredicto ---------- */
@@ -96,7 +106,7 @@ canvas { position: fixed; inset: 0; }
   z-index: 5;
   min-width: 34vw; max-width: 80vw;
   background: linear-gradient(180deg, rgba(24, 20, 15, .96), rgba(16, 13, 10, .96));
-  border: 2px solid var(--ochre);
+  border: 2px solid var(--base-soft);
   border-radius: 6px;
   padding: 2.2vh 3.4vw;
   text-align: center;
@@ -109,13 +119,13 @@ canvas { position: fixed; inset: 0; }
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(26px, 5.6vh, 54px);
   font-weight: 700; letter-spacing: .06em; line-height: 1.1;
-  color: #e9d9a6;
+  color: var(--base);
 }
 #banner .detail {
   margin-top: .8vh;
   font-size: clamp(14px, 2.2vh, 22px);
   letter-spacing: .12em; text-transform: uppercase;
-  color: #b9a86f;
+  color: var(--base-dim);
 }
 
 /* variantes de veredicto */
@@ -126,7 +136,7 @@ canvas { position: fixed; inset: 0; }
 #banner.damage { border-color: #d97b41; }
 #banner.damage .title { color: #ffb87e; text-shadow: 0 0 22px rgba(255, 130, 50, .5); }
 
-#banner.free { border-color: var(--ochre); }
+#banner.free { border-color: var(--base-soft); }
 
 #banner.fail {
   border-color: #a04832;
@@ -146,11 +156,11 @@ canvas { position: fixed; inset: 0; }
 #banner.complication .detail { color: #e8a888; }
 
 #banner.glory {
-  border-color: var(--gold);
+  border-color: var(--accent);
   background: linear-gradient(180deg, rgba(66, 48, 8, .96), rgba(34, 24, 4, .96));
 }
 #banner.glory .title {
-  color: var(--gold);
+  color: var(--accent);
   text-shadow: 0 0 26px rgba(255, 210, 74, .95), 0 0 70px rgba(255, 190, 40, .55);
 }
 #banner.glory .detail { color: #e8cf8a; }

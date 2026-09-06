@@ -39,17 +39,45 @@ h1 span { color: var(--gold); }
 .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot.off { background: var(--bad); }
 
-/* ---------- layout ---------- */
+/* ---------- layout: pestañas ---------- */
 main {
-  flex: 1; display: grid; grid-template-columns: 1.5fr 1fr;
-  gap: 18px; padding: 18px 22px; min-height: 0;
+  flex: 1; display: flex; flex-direction: column;
+  padding: 14px 22px 18px; min-height: 0;
 }
-.launcher, .side {
+.pages { display: flex; gap: 6px; margin-bottom: 12px; }
+.page-tab {
+  padding: 8px 22px;
+  background: var(--panel); color: var(--dim);
+  border: 1px solid var(--line); border-bottom: 2px solid var(--line); cursor: pointer;
+  font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+}
+.page-tab.active { background: var(--panel-2); color: var(--gold); border-bottom-color: var(--ochre); font-weight: 700; }
+.page {
+  flex: 1; min-height: 0; overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--line);
   padding: 18px;
-  overflow-y: auto;
 }
+.panel-launcher { max-width: 640px; width: 100%; margin: 0 auto; }
+#page-historial, #page-ajustes { max-width: 760px; width: 100%; margin: 0 auto; }
+
+/* ---------- ajustes plegables ---------- */
+details.settings {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  margin-bottom: 10px;
+}
+details.settings summary {
+  cursor: pointer; padding: 11px 14px;
+  font-size: 11.5px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--text); user-select: none;
+}
+details.settings summary:hover { color: var(--gold); }
+details.settings[open] summary { border-bottom: 1px solid var(--line); color: var(--gold); }
+details.settings > .displays, details.settings > .accents { padding: 12px 14px; }
+
+.header-right { display: flex; align-items: center; gap: 14px; }
+.header-right .ghost { padding: 8px 14px; }
 
 /* ---------- tabs ---------- */
 .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
@@ -92,11 +120,11 @@ main {
 /* ---------- roll button ---------- */
 .roll {
   width: 100%; padding: 20px 0; margin-top: 6px;
-  background: linear-gradient(180deg, #d9a441, #b57f22);
+  background: linear-gradient(180deg, var(--gold), var(--ochre));
   border: none; cursor: pointer;
   font-size: 24px; font-weight: 800; letter-spacing: .18em;
   color: #16120a;
-  box-shadow: 0 4px 24px rgba(217, 164, 65, .25);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .35);
 }
 .roll:hover { filter: brightness(1.1); }
 .roll:active { transform: translateY(2px); }
@@ -137,7 +165,7 @@ main {
 .preset-save input:focus { border-color: var(--ochre); }
 
 /* ---------- historial ---------- */
-#history { list-style: none; max-height: 40vh; overflow-y: auto; }
+#history { list-style: none; }
 #history li {
   display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
   padding: 8px 10px; margin-bottom: 5px;
@@ -184,3 +212,41 @@ main {
   font-size: 11.5px; color: var(--dim); line-height: 1.6;
 }
 .shortcuts b { color: var(--gold); }
+
+/* ---------- zona de dados / acento ---------- */
+.section-title-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 18px 0 8px;
+}
+.section-title-row .ghost { padding: 5px 9px; font-size: 11px; }
+
+#area-canvas {
+  width: 100%; display: block;
+  background: #0d0a07;
+  border: 1px solid var(--line);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.accents { display: flex; gap: 8px; }
+.accent-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--line); cursor: pointer; padding: 0;
+}
+.accent-btn.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,.5); }
+
+.colorrow { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.colorrow .clabel { width: 52px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.hexin {
+  width: 86px; padding: 6px 7px; font-size: 12px; font-family: Consolas, monospace;
+  background: #14100c; color: var(--text);
+  border: 1px solid var(--line); outline: none;
+}
+.hexin:focus { border-color: var(--ochre); }
+
+.zoombtn {
+  width: 30px; height: 26px; font-size: 15px;
+  background: var(--panel-2); color: var(--gold);
+  border: 1px solid var(--line); cursor: pointer;
+}
+.zoombtn:hover { background: var(--ochre); color: #16120a; }

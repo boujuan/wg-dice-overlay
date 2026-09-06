@@ -14,15 +14,24 @@
         <div class="subtitle">Overlay para la pantalla de jugadores · Wrath &amp; Glory</div>
       </div>
     </div>
-    <div class="status">
-      <span class="dot" id="status-dot"></span>
-      <span id="status-text">Overlay: comprobando…</span>
+    <div class="header-right">
+      <div class="status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">Overlay: comprobando…</span>
+      </div>
+      <button id="btn-mini" class="ghost">🪟 Mini lanzador</button>
     </div>
   </header>
 
   <main>
-    <!-- ============ panel izquierdo: lanzador ============ -->
-    <section class="launcher">
+    <nav class="pages">
+      <button class="page-tab active" data-page="tiradas">Tiradas</button>
+      <button class="page-tab" data-page="historial">Historial</button>
+      <button class="page-tab" data-page="ajustes">Ajustes</button>
+    </nav>
+
+    <!-- ============ página TIRADAS: minimalista, solo lanzar ============ -->
+    <section class="page panel-launcher" id="page-tiradas">
       <div class="tabs">
         <button class="tab active" data-mode="test">Test</button>
         <button class="tab" data-mode="damage">Daño / ED</button>
@@ -49,7 +58,7 @@
             </div>
           </div>
         </div>
-        <div class="hintline">El último dado es el de <b>Ira</b> (dorado) · 4-5 = icono · 6 = 2 iconos</div>
+        <div class="hintline">El último dado es el de <b>Ira</b> · 4-5 = icono · 6 = 2 iconos</div>
       </div>
 
       <!-- modo DAÑO -->
@@ -72,7 +81,7 @@
             </div>
           </div>
         </div>
-        <div class="hintline">Ej. lasgun: base 7 · ED 2 (Rapid Fire a corta) · cada 4-5 = +1 · 6 = +2</div>
+        <div class="hintline">Ej. lasgun: base 7 · ED 2 · cada 4-5 = +1 · 6 = +2</div>
       </div>
 
       <!-- modo LIBRE -->
@@ -82,17 +91,17 @@
             <label>Dados</label>
             <div class="stepper-box">
               <button data-step="-1" data-target="pool2">−</button>
-              <input id="pool2" type="number" min="1" max="20" value="2">
+              <input id="pool2" type="number" min="1" max="200" value="2">
               <button data-step="1" data-target="pool2">+</button>
             </div>
           </div>
         </div>
-        <div class="hintline">Tirada suelta: dados + suma total</div>
+        <div class="hintline">Tirada suelta: dados + suma total (hasta 200 dados)</div>
       </div>
 
       <button id="btn-roll" class="roll">🎲 LANZAR</button>
       <div class="repeat-row">
-        <button id="btn-repeat" class="ghost">↺ Repetir última (R)</button>
+        <button id="btn-repeat" class="ghost">↺ Repetir (R)</button>
         <button id="btn-clear" class="ghost">✕ Limpiar overlay (Esc)</button>
       </div>
 
@@ -104,56 +113,127 @@
       </div>
     </section>
 
-    <!-- ============ panel derecho: historial + ajustes ============ -->
-    <section class="side">
-      <div class="section-title">Historial</div>
+    <!-- ============ página HISTORIAL ============ -->
+    <section class="page hidden" id="page-historial">
+      <div class="section-title-row">
+        <div class="section-title" style="margin:0">Historial</div>
+        <button id="btn-hist-clear" class="ghost" style="flex:none">🗑 Limpiar historial</button>
+      </div>
       <ul id="history"></ul>
-
-      <div class="section-title">Pantallas</div>
-      <div class="displays">
-        <select id="display-select"></select>
-        <div class="displays-row">
-          <button id="btn-preview" class="ghost">👁 Probar en esta pantalla</button>
-          <button id="btn-toggle" class="ghost">Ocultar overlay</button>
-        </div>
-        <label class="checkrow">
-          <input type="checkbox" id="chk-windowed">
-          <span>Modo ventana <em>(si la transparencia no funciona en tu equipo)</em></span>
-        </label>
-        <div class="checkrow">
-          <span>Gráficos</span>
-          <select id="gpu-mode">
-            <option value="auto">Automático</option>
-            <option value="vulkan">ANGLE Vulkan</option>
-            <option value="software">Software (sin GPU)</option>
-          </select>
-          <em id="gpu-note" style="font-size:11px;color:var(--dim)"></em>
-        </div>
-        <div class="checkrow">
-          <span>Plataforma</span>
-          <select id="ozone-select">
-            <option value="x11">X11 / XWayland (con click-through)</option>
-            <option value="wayland">Wayland nativo (sin click-through)</option>
-          </select>
-        </div>
-        <div class="hintline">Si en modo X11 las ventanas no aparecen (XWayland roto tras una actualización), pasa a <b>Wayland nativo</b> y reinicia la app.</div>
-      </div>
-
-      <div class="section-title">Sonido</div>
-      <div class="volume">
-        <input id="volume" type="range" min="0" max="100" value="80">
-        <span id="volume-num">80%</span>
-      </div>
-
-      <div class="section-title">Duración del veredicto</div>
-      <div class="volume">
-        <input id="banner-secs" type="range" min="3" max="20" value="7">
-        <span id="banner-num">7s</span>
-      </div>
-
       <div class="shortcuts">
-        <b>Atajos:</b> Espacio lanzar · R repetir · 1-9 dados rápidos · Esc limpiar
+        <b>Atajos:</b> Espacio lanzar · R repetir · 1-9 dados rápidos · T/D/L modo · Esc limpiar
       </div>
+    </section>
+
+    <!-- ============ página AJUSTES: todo plegado por defecto ============ -->
+    <section class="page hidden" id="page-ajustes">
+
+      <details class="settings">
+        <summary>Pantallas</summary>
+        <div class="displays">
+          <div class="hintline" id="platform-note" style="margin:0 0 8px"></div>
+          <select id="display-select"></select>
+          <div class="displays-row">
+            <button id="btn-preview" class="ghost">👁 Probar en esta pantalla</button>
+            <button id="btn-toggle" class="ghost">Ocultar overlay</button>
+          </div>
+          <label class="checkrow">
+            <input type="checkbox" id="chk-windowed">
+            <span>Modo ventana <em>(si la transparencia no funciona en tu equipo)</em></span>
+          </label>
+          <div id="linux-only">
+            <div class="checkrow">
+              <span>Gráficos</span>
+              <select id="gpu-mode">
+                <option value="auto">Automático</option>
+                <option value="vulkan">ANGLE Vulkan</option>
+                <option value="software">Software (sin GPU)</option>
+              </select>
+            </div>
+            <div class="checkrow">
+              <span>Plataforma</span>
+              <select id="ozone-select">
+                <option value="x11">X11 / XWayland (con click-through)</option>
+                <option value="wayland">Wayland nativo (sin click-through)</option>
+              </select>
+            </div>
+            <div class="hintline">Si en modo X11 las ventanas no aparecen (XWayland roto tras una actualización), pasa a <b>Wayland nativo</b> y reinicia la app.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="settings">
+        <summary>Zona de dados</summary>
+        <div class="displays">
+          <div class="hintline" style="margin:0 0 8px">Dibuja el recuadro donde caerán los dados en la pantalla elegida (arrastrar para mover, esquina para redimensionar).</div>
+          <canvas id="area-canvas" width="300" height="169"></canvas>
+          <div class="hintline" id="area-note" style="margin:6px 0 0"></div>
+          <div class="volume" style="margin-top:10px">
+            <span style="width:88px;font-size:12px;color:var(--dim)">Tamaño dados</span>
+            <input id="dice-scale" type="range" min="50" max="160" value="100">
+            <span id="dice-scale-num">100%</span>
+          </div>
+          <div class="volume" style="margin-top:8px">
+            <span style="width:88px;font-size:12px;color:var(--dim)">Cámara</span>
+            <input id="camera-angle" type="range" min="10" max="90" value="50">
+            <span id="camera-angle-num">50°</span>
+          </div>
+          <div class="hintline">Ángulo de cámara: 90° = cenital (dados vistos desde arriba) · ángulos bajos = perspectiva rasante. Las paredes invisibles se ajustan solas al ángulo.</div>
+        </div>
+      </details>
+
+      <details class="settings">
+        <summary>Sonido y veredicto</summary>
+        <div class="section-title" style="margin-top:4px">Volumen</div>
+        <div class="volume">
+          <input id="volume" type="range" min="0" max="100" value="80">
+          <span id="volume-num">80%</span>
+        </div>
+        <div class="section-title">Duración del veredicto</div>
+        <div class="volume">
+          <input id="banner-secs" type="range" min="3" max="20" value="7">
+          <span id="banner-num">7s</span>
+        </div>
+        <div class="hintline">Segundos que el banner de veredicto (ÉXITO, GLORIA, DAÑO…) y los dados permanecen en pantalla antes de desvanecerse. No afecta a la caída ni al conteo.</div>
+      </details>
+
+      <details class="settings">
+        <summary>Colores</summary>
+        <div class="colorrow">
+          <span class="clabel">Acento</span>
+          <div class="accents" id="accent-picker">
+            <button class="accent-btn" data-color="#ffd24a" style="background:#ffd24a" title="Dorado"></button>
+            <button class="accent-btn" data-color="#ff6a4a" style="background:#ff6a4a" title="Rojo"></button>
+            <button class="accent-btn" data-color="#6fa2ff" style="background:#6fa2ff" title="Azul"></button>
+            <button class="accent-btn" data-color="#7fe07a" style="background:#7fe07a" title="Verde"></button>
+          </div>
+          <input id="accent-hex" class="hexin" placeholder="#custom" maxlength="7" spellcheck="false">
+        </div>
+        <div class="colorrow">
+          <span class="clabel">Base</span>
+          <div class="accents" id="base-picker">
+            <button class="accent-btn" data-color="#b3924a" style="background:#b3924a" title="Ocre"></button>
+            <button class="accent-btn" data-color="#8a919c" style="background:#8a919c" title="Grafito"></button>
+            <button class="accent-btn" data-color="#5f8fe0" style="background:#5f8fe0" title="Azul"></button>
+            <button class="accent-btn" data-color="#5cb571" style="background:#5cb571" title="Verde"></button>
+            <button class="accent-btn" data-color="#a07ad6" style="background:#a07ad6" title="Púrpura"></button>
+          </div>
+          <input id="base-hex" class="hexin" placeholder="#custom" maxlength="7" spellcheck="false">
+        </div>
+        <div class="hintline" style="margin-top:8px"><b>Acento</b>: dado de Ira, conteo y Gloria · <b>Base</b>: interfaz y números del overlay. Ambos aceptan hex custom.</div>
+      </details>
+
+      <details class="settings">
+        <summary>Interfaz</summary>
+        <div class="volume" style="margin-top:10px">
+          <span style="width:88px;font-size:12px;color:var(--dim)">Zoom</span>
+          <button id="zoom-out" class="zoombtn">−</button>
+          <span id="zoom-num" style="width:52px;text-align:center">100%</span>
+          <button id="zoom-in" class="zoombtn">+</button>
+        </div>
+        <div class="hintline">Tamaño de la interfaz de esta ventana (70–160%).</div>
+      </details>
+
     </section>
   </main>
 

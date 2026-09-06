@@ -6,11 +6,13 @@ const $$ = (s) => [...document.querySelectorAll(s)];
 let cfg = {};
 let mode = 'test';
 let lastPayload = null;
+let platform = 'unknown';
 
 /* ---------- estado / config ---------- */
 
 async function init() {
   cfg = await window.wgControl.getConfig();
+  try { platform = (await window.wgControl.appInfo()).platform; } catch {}
   mode = 'test';
   $('#pool').value = cfg.lastRoll?.pool ?? 5;
   $('#dn').value = cfg.lastRoll?.dn ?? 2;
@@ -22,9 +24,32 @@ async function init() {
   $('#banner-secs').value = cfg.bannerSeconds ?? 7;
   $('#banner-num').textContent = (cfg.bannerSeconds ?? 7) + 's';
   $('#chk-windowed').checked = !!cfg.windowedOverlay;
+  initPlatformUI();
+  scaleSlider.value = Math.round((cfg.diceScale ?? 1) * 100);
+  $('#dice-scale-num').textContent = scaleSlider.value + '%';
+  angleSlider.value = cfg.cameraAngle ?? 50;
+  $('#camera-angle-num').textContent = angleSlider.value + '°';
+  setAccent(cfg.accent || 'gold', false);
+  setBase(cfg.baseColor || 'ochre', false);
+  zoomNum.textContent = Math.round((cfg.uiZoom ?? 1) * 100) + '%';
   renderPresets();
+  renderHistory();
   await refreshDisplays();
   await refreshStatus();
+}
+
+/* selectores y notas según el OS: los ajustes de GPU/plataforma solo tienen
+ * sentido en Linux (en Windows todo funciona de serie) */
+function initPlatformUI() {
+  const note = $('#platform-note');
+  if (platform === 'win32') {
+    $('#linux-only').classList.add('hidden');
+    note.innerHTML = '<b>Windows</b> — transparencia, click-through y GPU funcionan de serie; no hace falta configurar nada.';
+  } else if (platform === 'linux') {
+    note.innerHTML = '<b>Linux</b> — si la GPU crashea o XWayland no muestra ventanas, usa los selectores de abajo.';
+  } else {
+    note.textContent = '';
+  }
 }
 
 async function refreshDisplays() {
@@ -42,6 +67,14 @@ async function refreshDisplays() {
   } else {
     const primary = displays.find(d => d.primary);
     if (primary) sel.value = primary.id;
+  }
+  // la miniatura de la zona de dados copia el aspect ratio de la pantalla activa
+  const active = displays.find(d => String(d.id) === String(sel.value)) || displays[0];
+  if (active) {
+    setAreaCanvasAspect(active.bounds.width / active.bounds.height);
+    $('#area-note').textContent =
+      `Miniatura a escala de: ${active.bounds.width}×${active.bounds.height}` +
+      ` · ${active.aspect || ''}${active.hz ? ` · ${active.hz} Hz` : ''}`;
   }
 }
 
@@ -109,7 +142,7 @@ function currentPayload(label) {
     payload.base = clamp($('#base').value, 0, 99);
     payload.ed = clamp($('#ed').value, 1, 20);
   } else {
-    payload.pool = clamp($('#pool2').value, 1, 20);
+    payload.pool = clamp($('#pool2').value, 1, 200);
   }
   return payload;
 }
@@ -135,12 +168,9 @@ async function doRoll(label) {
   setStatus(true);
 }
 
-/* ---------- historial ---------- */
+/* ---------- historial (persistente: lo guarda el proceso main) ---------- */
 
-window.wgControl.onRollResolved((r) => {
-  const ul = $('#history');
-  ul.querySelector('.empty')?.remove();
-
+function historyItem(r) {
   const li = document.createElement('li');
   let cls = 'free', right = '', left = '';
   const name = r.label ? escapeHtml(r.label) + ' — ' : '';
@@ -160,13 +190,52 @@ window.wgControl.onRollResolved((r) => {
   }
   li.className = cls;
   li.innerHTML = `<span class="l">${left}</span><span class="r">${right}</span>`;
-  ul.prepend(li);
-  while (ul.children.length > 25) ul.lastChild.remove();
+  return li;
+}
+
+function renderHistory() {
+  const ul = $('#history');
+  ul.innerHTML = '';
+  if (!cfg.history?.length) {
+    ul.innerHTML = '<li class="empty">Sin tiradas todavía.</li>';
+    return;
+  }
+  for (const r of cfg.history) ul.appendChild(historyItem(r));
+}
+
+window.wgControl.onRollResolved((r) => {
+  const ul = $('#history');
+  ul.querySelector('.empty')?.remove();
+  ul.prepend(historyItem(r));
+  while (ul.children.length > 50) ul.lastChild.remove();
+});
+
+$('#btn-hist-clear').addEventListener('click', async () => {
+  cfg.history = [];
+  await window.wgControl.setConfig({ history: [] });
+  renderHistory();
 });
 
 window.wgControl.onOverlayStatus((s) => setStatus(s.running && s.visible));
 
 /* ---------- eventos UI ---------- */
+
+/* páginas: Tiradas / Historial / Ajustes */
+function switchPage(name) {
+  $$('.page-tab').forEach(t => t.classList.toggle('active', t.dataset.page === name));
+  $$('.page').forEach(p => p.classList.toggle('hidden', p.id !== 'page-' + name));
+}
+$$('.page-tab').forEach(t => t.addEventListener('click', () => switchPage(t.dataset.page)));
+
+/* mini lanzador flotante (esquina, siempre encima, semitransparente) */
+const btnMini = $('#btn-mini');
+btnMini.addEventListener('click', async () => {
+  const open = await window.wgControl.toggleMini();
+  btnMini.textContent = open ? '✕ Cerrar mini' : '🪟 Mini lanzador';
+});
+window.wgControl.onMiniStatus((open) => {
+  btnMini.textContent = open ? '✕ Cerrar mini' : '🪟 Mini lanzador';
+});
 
 function setMode(m) {
   mode = m;
@@ -174,6 +243,7 @@ function setMode(m) {
   $('#panel-test').classList.toggle('hidden', m !== 'test');
   $('#panel-damage').classList.toggle('hidden', m !== 'damage');
   $('#panel-free').classList.toggle('hidden', m !== 'free');
+  switchPage('tiradas');
 }
 
 $$('.tab').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
@@ -242,20 +312,231 @@ $('#banner-secs').addEventListener('input', async (e) => {
   await window.wgControl.setConfig({ bannerSeconds: parseInt(e.target.value, 10) });
 });
 
+/* ---------- zona de dados (recuadro dibujable con el aspect de la pantalla) ---------- */
+
+const areaCanvas = $('#area-canvas');
+const areaCtx = areaCanvas.getContext('2d');
+let areaAspect = 16 / 9;
+let areaSaveTimer = null;
+
+function setAreaCanvasAspect(aspect) {
+  areaAspect = Math.max(.5, Math.min(4, aspect || 16 / 9));
+  // el canvas debe medir en píxeles reales lo que muestra en pantalla:
+  // si está dentro de un <details> plegado, clientWidth es 0 y se recalcula
+  // al desplegarlo (ResizeObserver de abajo)
+  const cw = areaCanvas.clientWidth || 0;
+  if (cw > 0) {
+    areaCanvas.width = Math.round(cw);
+    areaCanvas.height = Math.max(80, Math.round(cw / areaAspect));
+  }
+  drawArea();
+}
+
+// cualquier cambio de tamaño (desplegar el details, redimensionar la ventana…)
+// reajusta el canvas para que mantenga las proporciones de la pantalla elegida
+new ResizeObserver(() => {
+  if (areaCanvas.clientWidth > 0) setAreaCanvasAspect(areaAspect);
+}).observe(areaCanvas);
+
+function drawArea() {
+  const w = areaCanvas.width, h = areaCanvas.height;
+  areaCtx.clearRect(0, 0, w, h);
+  areaCtx.fillStyle = '#0d0a07';
+  areaCtx.fillRect(0, 0, w, h);
+  // rejilla tenue
+  areaCtx.strokeStyle = 'rgba(255,255,255,.05)';
+  for (let gx = w / 6; gx < w; gx += w / 6) {
+    areaCtx.beginPath(); areaCtx.moveTo(gx, 0); areaCtx.lineTo(gx, h); areaCtx.stroke();
+  }
+  for (let gy = h / 4; gy < h; gy += h / 4) {
+    areaCtx.beginPath(); areaCtx.moveTo(0, gy); areaCtx.lineTo(w, gy); areaCtx.stroke();
+  }
+  const a = cfg.diceArea || { x: .2, y: .2, w: .6, h: .6 };
+  const rx = a.x * w, ry = a.y * h, rw = a.w * w, rh = a.h * h;
+  areaCtx.fillStyle = 'rgba(233,196,106,.13)';
+  areaCtx.fillRect(rx, ry, rw, rh);
+  areaCtx.strokeStyle = '#e9c46a';
+  areaCtx.lineWidth = 2;
+  areaCtx.strokeRect(rx, ry, rw, rh);
+  // asa de redimensión (esquina inferior derecha)
+  areaCtx.fillStyle = '#e9c46a';
+  areaCtx.beginPath();
+  areaCtx.arc(rx + rw, ry + rh, 5, 0, Math.PI * 2);
+  areaCtx.fill();
+}
+
+function saveArea() {
+  clearTimeout(areaSaveTimer);
+  areaSaveTimer = setTimeout(() => {
+    window.wgControl.setConfig({ diceArea: { ...cfg.diceArea } });
+  }, 150);
+}
+
+let areaDrag = null; // {mode:'move'|'resize', start:{x,y}, orig:{...}}
+function areaHit(px, py, r) {
+  const a = cfg.diceArea || { x: .2, y: .2, w: .6, h: .6 };
+  const nearCorner = Math.hypot(px - (a.x + a.w) * r.width, py - (a.y + a.h) * r.height) < 14;
+  const inside = px >= a.x * r.width && px <= (a.x + a.w) * r.width &&
+    py >= a.y * r.height && py <= (a.y + a.h) * r.height;
+  return nearCorner ? 'resize' : inside ? 'move' : null;
+}
+areaCanvas.addEventListener('pointerdown', (e) => {
+  const r = areaCanvas.getBoundingClientRect();
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  cfg.diceArea || (cfg.diceArea = { x: .2, y: .2, w: .6, h: .6 });
+  const hit = areaHit(px, py, r);
+  if (!hit) return; // fuera del recuadro → ignorar
+  areaDrag = { mode: hit, start: { x: px, y: py }, orig: { ...cfg.diceArea }, rect: r };
+  areaCanvas.setPointerCapture(e.pointerId);
+});
+areaCanvas.addEventListener('pointermove', (e) => {
+  const r = areaCanvas.getBoundingClientRect();
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  if (!areaDrag) {
+    // cursor según zona: esquina = redimensionar, interior = mover
+    const hit = areaHit(px, py, r);
+    areaCanvas.style.cursor = hit === 'resize' ? 'nwse-resize' : hit === 'move' ? 'move' : 'default';
+    return;
+  }
+  const dx = (e.clientX - areaDrag.start.x) / areaDrag.rect.width;
+  const dy = (e.clientY - areaDrag.start.y) / areaDrag.rect.height;
+  const a = cfg.diceArea, o = areaDrag.orig;
+  if (areaDrag.mode === 'move') {
+    a.x = Math.max(0, Math.min(1 - o.w, o.x + dx));
+    a.y = Math.max(0, Math.min(1 - o.h, o.y + dy));
+  } else {
+    a.w = Math.max(.15, Math.min(1 - a.x, o.w + dx));
+    a.h = Math.max(.15, Math.min(1 - a.y, o.h + dy));
+  }
+  drawArea();
+  saveArea();
+});
+areaCanvas.addEventListener('pointerup', () => { areaDrag = null; saveArea(); });
+
+/* tamaño de los dados */
+const scaleSlider = $('#dice-scale');
+scaleSlider.value = Math.round((cfg.diceScale ?? 1) * 100);
+$('#dice-scale-num').textContent = scaleSlider.value + '%';
+scaleSlider.addEventListener('input', async (e) => {
+  $('#dice-scale-num').textContent = e.target.value + '%';
+  await window.wgControl.setConfig({ diceScale: e.target.value / 100 });
+});
+
+/* ángulo de cámara (10–90°) */
+const angleSlider = $('#camera-angle');
+angleSlider.value = cfg.cameraAngle ?? 50;
+$('#camera-angle-num').textContent = angleSlider.value + '°';
+angleSlider.addEventListener('input', async (e) => {
+  $('#camera-angle-num').textContent = e.target.value + '°';
+  await window.wgControl.setConfig({ cameraAngle: parseInt(e.target.value, 10) });
+});
+
+/* ---------- colores: acento (overlay) y base (interfaz + números) ---------- */
+
+const ACCENT_PRESETS = { gold: '#ffd24a', red: '#ff6a4a', blue: '#6fa2ff', green: '#7fe07a' };
+const BASE_PRESETS = { ochre: '#b3924a', grafito: '#8a919c', azul: '#5f8fe0', verde: '#5cb571', purpura: '#a07ad6' };
+const isHex = v => /^#[0-9a-f]{6}$/i.test(String(v || '').trim());
+const normHex = v => {
+  const s = String(v || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
+  if (/^[0-9a-f]{6}$/i.test(s)) return '#' + s.toLowerCase();
+  return null;
+};
+const resolveColor = (v, presets, fb) => normHex(v) || presets[v] || fb;
+
+function hexToHsl(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0; const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > .5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  return { h, s, l };
+}
+const hslStr = (h, s, l) =>
+  `hsl(${Math.round(h)} ${Math.round(Math.min(1, Math.max(0, s)) * 100)}% ${Math.round(Math.min(1, Math.max(0, l)) * 100)}%)`;
+
+/* la interfaz entera se tiñe a partir del color base (paleta derivada) */
+function applyBaseVars(hex) {
+  const { h, s } = hexToHsl(hex);
+  const root = document.documentElement.style;
+  root.setProperty('--bg', hslStr(h, s * .35, .075));
+  root.setProperty('--panel', hslStr(h, s * .4, .11));
+  root.setProperty('--panel-2', hslStr(h, s * .45, .15));
+  root.setProperty('--band', hslStr(h, s * .35, .09));
+  root.setProperty('--line', hslStr(h, s * .4, .21));
+  root.setProperty('--text', hslStr(h, s * .3, .86));
+  root.setProperty('--dim', hslStr(h, s * .28, .55));
+  root.setProperty('--gold', hslStr(h, Math.min(1, s + .1), .6));
+  root.setProperty('--ochre', hslStr(h, s * .8, .55));
+}
+
+function setAccent(v, save = true) {
+  const hex = resolveColor(v, ACCENT_PRESETS, ACCENT_PRESETS.gold);
+  cfg.accent = normHex(v) || (ACCENT_PRESETS[v] ? v : 'gold');
+  $$('#accent-picker .accent-btn').forEach(b => b.classList.toggle('active', b.dataset.color === hex));
+  const hin = $('#accent-hex');
+  if (document.activeElement !== hin) hin.value = isHex(cfg.accent) ? cfg.accent : '';
+  if (save) window.wgControl.setConfig({ accent: cfg.accent });
+}
+
+function setBase(v, save = true) {
+  const hex = resolveColor(v, BASE_PRESETS, BASE_PRESETS.ochre);
+  cfg.baseColor = normHex(v) || (BASE_PRESETS[v] ? v : 'ochre');
+  applyBaseVars(hex);
+  $$('#base-picker .accent-btn').forEach(b => b.classList.toggle('active', b.dataset.color === hex));
+  const hin = $('#base-hex');
+  if (document.activeElement !== hin) hin.value = isHex(cfg.baseColor) ? cfg.baseColor : '';
+  if (save) window.wgControl.setConfig({ baseColor: cfg.baseColor });
+}
+
+$$('#accent-picker .accent-btn').forEach(b => b.addEventListener('click', () => setAccent(b.dataset.color)));
+$$('#base-picker .accent-btn').forEach(b => b.addEventListener('click', () => setBase(b.dataset.color)));
+$('#accent-hex').addEventListener('change', e => {
+  const h = normHex(e.target.value);
+  if (h) setAccent(h); else e.target.value = '';
+});
+$('#base-hex').addEventListener('change', e => {
+  const h = normHex(e.target.value);
+  if (h) setBase(h); else e.target.value = '';
+});
+
+/* ---------- zoom de la interfaz ---------- */
+const zoomNum = $('#zoom-num');
+async function applyZoom(factor) {
+  const z = await window.wgControl.setZoom(factor);
+  cfg.uiZoom = z;   // acumula: cada clic parte del valor actual
+  zoomNum.textContent = Math.round(z * 100) + '%';
+}
+$('#zoom-in').addEventListener('click', () => applyZoom((cfg.uiZoom ?? 1) + .1));
+$('#zoom-out').addEventListener('click', () => applyZoom((cfg.uiZoom ?? 1) - .1));
+
 /* ---------- atajos de teclado ---------- */
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'number') {
+  // escribiendo en un campo: los dígitos van al campo, sin atajos
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
     if (e.key === 'Enter') doRoll();
     return;
   }
   if (e.code === 'Space') { e.preventDefault(); doRoll(); }
   else if (e.key === 'r' || e.key === 'R') { if (lastPayload) doRoll(lastPayload.label); }
   else if (e.key === 'Escape') window.wgControl.clearOverlay();
-  else if (e.key === 't' || e.key === 'T') setMode('test');
+  else if (e.key === 't' || e.key === 'T') { setMode('test'); }
   else if (e.key === 'd' || e.key === 'D') setMode('damage');
   else if (e.key === 'l' || e.key === 'L') setMode('free');
-  else if (/^[1-9]$/.test(e.key)) { $('#pool').value = e.key; setMode('test'); }
+  else if (/^[1-9]$/.test(e.key)) {
+    // número de dados según el modo actual, sin saltar de pestaña
+    if (mode === 'damage') $('#ed').value = e.key;
+    else if (mode === 'free') $('#pool2').value = e.key;
+    else $('#pool').value = e.key;
+  }
 });
 
 init();

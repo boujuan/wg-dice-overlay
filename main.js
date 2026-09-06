@@ -2,7 +2,7 @@
  * Dos ventanas: control (pantalla del DM) + overlay transparente click-through
  * (pantalla donde Arkenforge muestra el mapa a los jugadores).
  */
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, dialog, globalShortcut, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -10,6 +10,13 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  // ya hay otra copia (p. ej. el .exe portable) reteniendo el lock:
+  // sin esto el proceso saldría sin decir nada y parecería que "no arranca"
+  dialog.showErrorBox(
+    'Tiradas W&G 3D — ya está en marcha',
+    'Ya hay otra instancia de la app abierta (quizá el WG-Dice-Overlay portable o solo su overlay).\n\n' +
+    'Ciérrala del todo — incluyendo el icono/overlay si quedó en segundo plano — y vuelve a lanzar.'
+  );
   app.quit();
 } else {
   main();
@@ -18,6 +25,7 @@ if (!gotLock) {
 function main() {
   let controlWin = null;
   let overlayWin = null;
+  let miniWin = null;
   let overlayVisible = true;
   let overlayReady = false;
   let pendingRolls = [];
@@ -33,6 +41,14 @@ function main() {
     disableGpu: false,        // flag antiguo (v1.0.1) — migrado a gpuMode
     volume: 0.8,
     bannerSeconds: 7,
+    miniBounds: null,        // última posición/tamaño del mini lanzador
+    diceArea: { x: .2, y: .2, w: .6, h: .6 }, // fracción de pantalla donde caen los dados
+    diceScale: 1,      // multiplicador de tamaño de dado (0.5 – 1.6)
+    cameraAngle: 50,   // grados de la cámara: 90 = cenital, 10 = muy rasante
+    baseColor: 'ochre', // color base de la interfaz/números (nombre o #hex)
+    uiZoom: 1,         // escala de la interfaz de control (0.7 – 1.6)
+    accent: 'gold',    // gold | red | blue | green
+    history: [],       // últimas tiradas resueltas (persistente)
     presets: [
       { name: 'Azul — BS', mode: 'test', pool: 5, dn: 2, base: 7, ed: 1 },
       { name: 'Azul — Liderazgo', mode: 'test', pool: 5, dn: 2, base: 7, ed: 1 },
@@ -82,10 +98,14 @@ function main() {
   }
 
   // si el proceso GPU muere (segfault en Mesa/ANGLE EGL_CreateWindowSurface),
-  // sube un peldaño en la escalera y relanza — hasta agotarla
+  // sube un peldaño en la escalera y relanza — hasta agotarla.
+  // OJO: al cerrar la app el proceso GPU también muere (exit 143/0) — ignorarlo
+  let quitting = false;
+  app.on('before-quit', () => { quitting = true; });
   app.on('child-process-gone', (_e, details) => {
     const type = String(details.type || '').toUpperCase();
     if (!type.includes('GPU')) return;
+    if (quitting || details.exitCode === 0 || details.exitCode === 143) return;
     if (cfg.gpuMode === 'auto') {
       console.log('[W&G] GPU crasheó (¿Mesa/ANGLE?) — reintentando con ANGLE Vulkan');
       cfg.gpuMode = 'vulkan';
@@ -131,7 +151,7 @@ function main() {
 
   function createControl() {
     controlWin = new BrowserWindow({
-      width: 1120, height: 780, minWidth: 940, minHeight: 640,
+      width: 860, height: 720, minWidth: 620, minHeight: 560,
       backgroundColor: '#161310',
       title: 'Tiradas W&G 3D — Control',
       autoHideMenuBar: true,
@@ -141,7 +161,61 @@ function main() {
       }
     });
     controlWin.loadFile(path.join(__dirname, 'control', 'index.html'));
-    controlWin.on('closed', () => { controlWin = null; });
+    controlWin.webContents.once('dom-ready', () => {
+      try { if (cfg.uiZoom && cfg.uiZoom !== 1) controlWin.webContents.setZoomFactor(cfg.uiZoom); } catch {}
+    });
+    controlWin.on('closed', () => {
+      controlWin = null;
+      // la X en la control cierra TODO: antes, el overlay (y el mini) dejaban la
+      // app viva en segundo plano reteniendo el single-instance lock
+      destroyOverlay();
+      if (miniWin) { try { miniWin.destroy(); } catch {} miniWin = null; }
+      app.quit();
+    });
+  }
+
+  /* Mini lanzador: ventana pequeña always-on-top para la pantalla del DM,
+   * semitransparente cuando el ratón no está encima. */
+  function createMini() {
+    const ref = controlWin && !controlWin.isDestroyed()
+      ? controlWin.getBounds()
+      : screen.getPrimaryDisplay().bounds;
+    const wa = screen.getDisplayMatching(ref).workArea;
+    const def = { x: wa.x + wa.width - 354, y: wa.y + wa.height - 334, width: 340, height: 324 };
+    let b = def;
+    if (cfg.miniBounds && cfg.miniBounds.width >= 260 && cfg.miniBounds.height >= 220) {
+      const d = screen.getDisplayMatching(cfg.miniBounds);
+      const inside = cfg.miniBounds.x >= d.workArea.x - 100 &&
+        cfg.miniBounds.y >= d.workArea.y - 100 &&
+        cfg.miniBounds.x + cfg.miniBounds.width <= d.workArea.x + d.workArea.width + 100 &&
+        cfg.miniBounds.y + cfg.miniBounds.height <= d.workArea.y + d.workArea.height + 100;
+      if (inside) b = cfg.miniBounds;
+    }
+    miniWin = new BrowserWindow({
+      ...b,
+      frame: false, hasShadow: true,
+      resizable: true, fullscreenable: false,
+      backgroundColor: '#161310',
+      title: 'W&G — Mini lanzador',
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true, nodeIntegration: false, sandbox: true
+      }
+    });
+    miniWin.setAlwaysOnTop(true, 'screen-saver');
+    miniWin.loadFile(path.join(__dirname, 'control', 'mini.html'));
+    miniWin.on('close', () => {
+      try { cfg.miniBounds = miniWin.getBounds(); saveConfig(); } catch {}
+    });
+    miniWin.on('focus', updateMiniKeys);
+    miniWin.on('blur', updateMiniKeys);
+    miniWin.on('closed', () => {
+      miniWin = null;
+      miniHover = false;
+      updateMiniKeys();
+      controlWin?.webContents.send('mini:status', false);
+    });
   }
 
   function overlayBounds() {
@@ -225,12 +299,27 @@ function main() {
 
   ipcMain.handle('displays:list', () => {
     const primary = screen.getPrimaryDisplay();
+    // aspect ratio legible: 16:9, 16:10… y si no encaja, fracción reducida
+    const ratioOf = (w, h) => {
+      const r = w / h;
+      for (const [a, b] of [[16, 9], [16, 10], [21, 9], [32, 9], [4, 3], [5, 4], [3, 2], [1, 1]]) {
+        if (Math.abs(r - a / b) < .015) return `${a}:${b}`;
+      }
+      const gcd = (x, y) => y ? gcd(y, x % y) : x;
+      const g = gcd(w, h);
+      return `${w / g}:${h / g}`;
+    };
     return screen.getAllDisplays().map(d => ({
       id: d.id,
       bounds: d.bounds,
       scaleFactor: d.scaleFactor,
       primary: d.id === primary.id,
-      label: `Pantalla ${d.bounds.x},${d.bounds.y} — ${d.bounds.width}×${d.bounds.height}${d.id === primary.id ? ' (principal)' : ''}`
+      aspect: ratioOf(d.bounds.width, d.bounds.height),
+      hz: d.displayFrequency || null,
+      label: `Pantalla ${d.bounds.x},${d.bounds.y} — ${d.bounds.width}×${d.bounds.height}` +
+        ` · ${ratioOf(d.bounds.width, d.bounds.height)}` +
+        (d.displayFrequency ? ` · ${d.displayFrequency} Hz` : '') +
+        (d.id === primary.id ? ' (principal)' : '')
     }));
   });
 
@@ -238,6 +327,8 @@ function main() {
   ipcMain.handle('config:set', (_e, patch) => {
     cfg = { ...cfg, ...patch };
     saveConfig();
+    // aviso en vivo al overlay (volumen, banner, acento, zona/tamaño de dados…)
+    overlayWin?.webContents.send('config:updated', cfg);
     return { ...cfg };
   });
 
@@ -307,8 +398,10 @@ function main() {
     return true;
   });
 
-  // el overlay informa del resultado → al control para el historial
+  // el overlay informa del resultado → al control para el historial (persistente)
   ipcMain.handle('roll:resolved', (_e, result) => {
+    cfg.history = [result, ...(cfg.history || [])].slice(0, 50);
+    saveConfig();
     controlWin?.webContents.send('roll:resolved', result);
     return true;
   });
@@ -316,6 +409,56 @@ function main() {
   ipcMain.handle('overlay:status:request', () => ({
     running: !!overlayWin, visible: overlayVisible
   }));
+
+  /* ---------- mini lanzador ---------- */
+
+  ipcMain.handle('mini:toggle', () => {
+    if (miniWin) { miniWin.close(); return false; }
+    createMini();
+    controlWin?.webContents.send('mini:status', true);
+    return true;
+  });
+
+  // ratón encima → opaco; fuera → semitransparente (para no molestar al DM)
+  let miniHover = false;
+  ipcMain.handle('mini:hover', (_e, hover) => {
+    miniHover = !!hover;
+    miniWin?.setOpacity(hover ? 1 : 0.28);
+    updateMiniKeys();
+    return true;
+  });
+
+  /* Atajos del mini con solo el ratón encima: Windows no deja robar el foco del
+   * proceso en primer plano, así que se registran atajos globales MIENTRAS el
+   * ratón está sobre el mini (y el mini no está enfocado). */
+  const MINI_KEYS = ['Space', 'R', 'T', 'D', 'L', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  let miniKeysOn = false;
+  function updateMiniKeys() {
+    const want = miniHover && !!miniWin && !miniWin.isFocused();
+    if (want === miniKeysOn) return;
+    if (want) {
+      for (const k of MINI_KEYS) {
+        try { globalShortcut.register(k, () => miniWin?.webContents.send('mini:key', k)); } catch {}
+      }
+      miniKeysOn = true;
+    } else {
+      for (const k of MINI_KEYS) {
+        try { if (globalShortcut.isRegistered(k)) globalShortcut.unregister(k); } catch {}
+      }
+      miniKeysOn = false;
+    }
+  }
+
+  /* zoom de la interfaz de control (pasos exactos de 10%) */
+  ipcMain.handle('ui:zoom', (_e, factor) => {
+    cfg.uiZoom = Math.round(Math.min(1.6, Math.max(.7, Number(factor) || 1)) * 10) / 10;
+    saveConfig();
+    controlWin?.webContents.setZoomFactor(cfg.uiZoom);
+    return cfg.uiZoom;
+  });
+
+  // enfocar el mini lanzador no funciona en Windows (foreground lock):
+  // los atajos con hover se resuelven con globalShortcut (ver updateMiniKeys)
 
   /* ---------------- eventos de pantallas ---------------- */
 
@@ -337,5 +480,9 @@ function main() {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+  });
+
+  app.on('will-quit', () => {
+    try { globalShortcut.unregisterAll(); } catch {}
   });
 }

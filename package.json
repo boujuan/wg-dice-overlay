@@ -1,6 +1,6 @@
 {
   "name": "wg-dice-overlay",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Tiradas W&G 3D — overlay transparente de dados 3D con física para Wrath & Glory, pensado para flotar sobre Arkenforge en la pantalla de los jugadores.",
   "main": "main.js",
   "author": "boujuan",
@@ -42,7 +42,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png"

@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('wgControl', {
   requestStatus: () => ipcRenderer.invoke('overlay:status:request'),
   roll: (payload) => ipcRenderer.invoke('roll:request', payload),
   clearOverlay: () => ipcRenderer.invoke('overlay:clear'),
+  toggleMini: () => ipcRenderer.invoke('mini:toggle'),
+  setMiniHover: (hover) => ipcRenderer.invoke('mini:hover', hover),
+  onMiniKey: (cb) => ipcRenderer.on('mini:key', (_e, k) => cb(k)),
+  setZoom: (factor) => ipcRenderer.invoke('ui:zoom', factor),
+  onMiniStatus: (cb) => ipcRenderer.on('mini:status', (_e, open) => cb(open)),
   onRollResolved: (cb) => ipcRenderer.on('roll:resolved', (_e, r) => cb(r)),
   onOverlayStatus: (cb) => ipcRenderer.on('overlay:status', (_e, s) => cb(s))
 });
@@ -22,5 +27,6 @@ contextBridge.exposeInMainWorld('wgOverlay', {
   onClear: (cb) => ipcRenderer.on('roll:clear', () => cb()),
   resolve: (result) => ipcRenderer.invoke('roll:resolved', result),
   getConfig: () => ipcRenderer.invoke('config:get'),
+  onConfigUpdated: (cb) => ipcRenderer.on('config:updated', (_e, c) => cb(c)),
   ready: () => ipcRenderer.invoke('overlay:ready')
 });
