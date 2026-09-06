@@ -41,6 +41,7 @@ function main() {
   const defaults = {
     overlayDisplayId: null,   // null = pantalla principal
     windowedOverlay: false,   // overlay como ventana normal (si la transparencia falla)
+    disableGpu: false,        // fallback si el proceso GPU de la máquina crashea
     volume: 0.8,
     bannerSeconds: 7,
     presets: [
@@ -52,6 +53,25 @@ function main() {
     lastRoll: null
   };
   let cfg = loadConfig();
+
+  // si ya sabemos que la GPU de esta máquina crashea, render por software
+  if (cfg.disableGpu) {
+    app.disableHardwareAcceleration();
+    console.log('[W&G] GPU desactivada por configuración (fallback estable)');
+  }
+
+  // si el proceso GPU muere (segfault típico de AppImage + ciertos drivers),
+  // lo recordamos y relanzamos con aceleración desactivada — una sola vez
+  app.on('child-process-gone', (_e, details) => {
+    const type = String(details.type || '').toUpperCase();
+    if (type.includes('GPU') && !cfg.disableGpu) {
+      console.log('[W&G] Proceso GPU crasheó — relanzando sin aceleración hardware');
+      cfg.disableGpu = true;
+      saveConfig();
+      app.relaunch();
+      app.exit(0);
+    }
+  });
 
   function loadConfig() {
     try {

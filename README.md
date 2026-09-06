@@ -79,7 +79,7 @@ Empaquetar: `npm run dist` (genera `.exe` portable y `.AppImage` en `dist/`).
 | Problema | Solución |
 |---|---|
 | El overlay no se ve sobre Arkenforge | Arkenforge en fullscreen exclusivo dibuja por encima: cámbialo a borderless/ventana |
-| El overlay tapa y no deja hacer clic | Es *click-through* por diseño; en Windows funciona siempre. En Linux/Wayland puede fallar → usa Modo ventana o sesión X11 |
+| En Linux el overlay sale negro y bloquea | Ya resuelto: la app fuerza X11/XWayland en Linux (donde transparencia y click-through funcionan). Si tu sesión no tiene XWayland (rarísimo), usa **Modo ventana** o arranca con `--ozone-platform=wayland` bajo tu cuenta y riesgo |
 | No se oye nada | Sube el volumen en el panel; el audio se genera al vuelo (sin archivos) |
 | SmartScreen/antivirus avisa del .exe | Firmado no está; "ejecutar igualmente" o añade excepción |
 | Los dados salen del borde | No pueden: hay paredes invisibles ajustadas a la pantalla |
