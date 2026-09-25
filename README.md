@@ -64,19 +64,26 @@ Si prefieres no instalar nada, sigue habiendo `WG-Dice-Overlay-*-portable.exe` (
 
 ### Linux
 
-Tres vías, por orden de recomendación:
+Vías disponibles:
 
-1. **Desde el repo (recomendado en tu propia máquina)** — sin AppImages de por medio:
+1. **Arch Linux / CachyOS / Manjaro (AUR)**:
+   ```bash
+   yay -S wg-dice-overlay-bin
+   # o con paru:
+   paru -S wg-dice-overlay-bin
+   ```
+
+2. **Desde el repo (recomendado en tu propia máquina)** — sin AppImages de por medio:
    ```bash
    git clone https://github.com/boujuan/wg-dice-overlay.git
    cd wg-dice-overlay && ./start.sh
    ```
    (`start.sh` instala dependencias la primera vez y arranca el modo dev.)
 
-2. **tar.gz portable** — `WG-Dice-Overlay-*-linux-x64.tar.gz`: descomprime y ejecuta
+3. **tar.gz portable** — `WG-Dice-Overlay-*-linux-x64.tar.gz`: descomprime y ejecuta
    `./linux-unpacked/wg-dice-overlay` (si no arranca, añade `--no-sandbox`).
 
-3. **AppImage** — funciona con doble clic, pero ojo:
+4. **AppImage** — funciona con doble clic, pero ojo:
    - Con **AppImageLauncher** instalado (CachyOS y otras), lanzar por terminal puede abrir un diálogo de "¿integrar?" en vez de ejecutar; desde el gestor de archivos elige *Ejecutar*.
    - En sesiones **Wayland**, la propia app fuerza X11/XWayland automáticamente (donde la transparencia y el click-through sí funcionan) desde v1.0.1.
    - Si el proceso GPU de tu máquina crashea, la app se **relanza sola sin aceleración hardware** (SwiftShader tira los dados de sobra) y lo recuerda.
@@ -84,6 +91,18 @@ Tres vías, por orden de recomendación:
 ### Empaquetar desde código
 
 `npm run dist` genera en `dist/` el `.exe` portable, el `.AppImage` y puedes comprimir `linux-unpacked/` a mano para el tar.gz.
+
+### Simulación de dados y análisis de sesgo
+
+El proyecto incluye un simulador Monte Carlo multihilo (`scripts/simulate.mjs`) que corre el motor físico real en paralelo a través de todos los núcleos de CPU para verificar la uniformidad estadística de las tiradas (test $\chi^2$, valor $p$, mecánicas de Ira y dados ladeados):
+
+```bash
+# Tirada rápida por defecto (500 tiradas para pools de 1 a 6 dados)
+npm run sim
+
+# Prueba intensiva (1.000 tiradas para pools de 1 a 10 dados)
+npm run sim -- -n 1000 -r 1-10
+```
 
 ## Solución de problemas
 
@@ -102,15 +121,18 @@ Tres vías, por orden de recomendación:
 Electron + three.js (render alpha) + cannon-es (física rígida) + Web Audio API. Dos `BrowserWindow`: control normal y overlay `transparent + frame:false + alwaysOnTop('screen-saver') + setIgnoreMouseEvents(true)`. Sin servidores, sin red, todo local.
 
 ```
-main.js          proceso principal: ventanas, displays, IPC, config
-preload.js       puente IPC seguro (contextBridge)
-control/         UI del DM (vanilla JS)
-overlay/         dados 3D, partículas, audio, reglas W&G
-  wng.js         lógica pura testeable (iconos, shifts, pifia, gloria)
-  dice.js        escena three.js + mundo cannon-es + lectura de caras
-  particles.js   fuego/gloria/ascuas (canvas 2D aditivo)
-  sound.js       síntesis procedural
-scripts/vendor.mjs   copia three/cannon-es de node_modules a overlay/vendor/
+main.js              proceso principal: ventanas, displays, IPC, config
+preload.js           puente IPC seguro (contextBridge)
+control/             UI del DM (vanilla JS)
+overlay/             dados 3D, partículas, audio, reglas W&G
+  wng.js             lógica pura testeable (iconos, shifts, pifia, gloria)
+  dice.js            escena three.js + mundo cannon-es + lectura de caras
+  particles.js       fuego/gloria/ascuas (canvas 2D aditivo)
+  sound.js           síntesis procedural
+scripts/
+  vendor.mjs         copia three/cannon-es de node_modules a overlay/vendor/
+  simulate.mjs       simulador Monte Carlo multihilo y gráfico en terminal
+aur/                 paquete para Arch User Repository (PKGBUILD, .SRCINFO, desktop)
 ```
 
 ## Licencia
